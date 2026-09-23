@@ -1,0 +1,131 @@
+{
+  "Navigation": {
+    "home": "Home",
+    "about": "About Us",
+    "services": "Our Services",
+    "menu": "Menu Highlights",
+    "howItWorks": "How It Works",
+    "contact": "Contact & Location",
+    "call": "Call",
+    "whatsapp": "WhatsApp"
+  },
+  "Hero": {
+    "eyebrow": "Tiruppur • Traditional South Indian Catering",
+    "headline": "Authentic flavours for every celebration",
+    "description": "Traditional home-style catering in Tiruppur for weddings, family functions, corporate & community events. Serving 30 to 500+ guests.",
+    "whatsappBtn": "Chat on WhatsApp",
+    "quoteBtn": "Get a Quote",
+    "trustYears": "Years\nExperience",
+    "trustGuests": "Up to\nGuests",
+    "trustStyle": "Home-style\nCooking"
+  },
+  "Occasions": {
+    "label": "Occasions",
+    "heading": "Ready for any celebration",
+    "subheading": "Every occasion, served with heart and tradition",
+    "wedding": "Weddings & Marriage",
+    "family": "Family Functions",
+    "corporate": "Corporate Catering",
+    "birthday": "Birthday Celebrations",
+    "community": "Community Events",
+    "bulk": "Bulk Food Orders"
+  },
+  "Story": {
+    "label": "Our Story",
+    "heading": "Cooked with love,\nServed with trust",
+    "tagline": "Good Food · Good Vibes · Always Together",
+    "p1": "Sri Ganapathi Mess has been providing exceptional home-style catering in Tiruppur. From weddings to corporate events, our goal is to serve fresh food with warm hospitality.",
+    "p2": "We specialize in customized menus and timely delivery for events ranging from 30 to 500+ guests.",
+    "badgeTitle": "Home-style Cooking",
+    "badgeSub": "Authentic Taste",
+    "pillars": {
+      "fresh": { "title": "Fresh Ingredients", "desc": "Cooked fresh every day" },
+      "taste": { "title": "Home Taste", "desc": "Just like mother's cooking" },
+      "time": { "title": "On Time", "desc": "Punctual delivery" },
+      "custom": { "title": "Custom Menu", "desc": "Tailored to your needs" }
+    }
+  },
+  "Menu": {
+    "label": "Menu Highlights",
+    "heading": "Flavours that bring\neveryone together",
+    "subheading": "Discover our signature dishes",
+    "tabs": {
+      "all": "All",
+      "veg": "🌱 Vegetarian",
+      "nonveg": "🍗 Non-Veg"
+    },
+    "items": {
+      "bananaLeaf": {
+        "tag": "🌿 Vegetarian",
+        "title": "Banana Leaf Feast",
+        "desc": "A complete traditional feast including rice, sambar, rasam, kootu, poriyal, and payasam."
+      },
+      "biryani": {
+        "tag": "🍗 Non-Veg",
+        "title": "Dum Biryani",
+        "desc": "Special biryani made with fragrant spices and fresh meat."
+      },
+      "tiffin": {
+        "tag": "🌿 Tiffin",
+        "title": "Morning Tiffin Spread",
+        "desc": "Traditional breakfast featuring idli, dosa, sambar, chutney, and filter coffee."
+      }
+    },
+    "fullMenuText": "Contact us on WhatsApp for the full menu",
+    "fullMenuBtn": "Get Full Menu"
+  },
+  "HowItWorks": {
+    "label": "How We Work",
+    "heading": "Your order confirmed\nin 3 simple steps",
+    "steps": {
+      "step1": { "title": "Enquire", "desc": "Tell us the details via WhatsApp or phone — occasion, date, and guest count." },
+      "step2": { "title": "Get Your Quote", "desc": "We will contact you within 2 hours with a custom menu and pricing." },
+      "step3": { "title": "Enjoy Your Feast", "desc": "Fresh, delicious food delivered on time to make your event unforgettable." }
+    }
+  },
+  "Contact": {
+    "label": "Service Areas & Contact",
+    "heading": "Near you in Tiruppur",
+    "subheading": "Serving Tiruppur and surrounding areas",
+    "areasTitle": "Service Areas",
+    "areasDesc": "We provide catering services in Tiruppur and surrounding areas. Please contact us to confirm delivery to specific locations.",
+    "areasNote": "[Note: Service areas will be updated soon]",
+    "areas": ["📍 Tiruppur", "📍 Velliyankadu", "📍 60 Feet Road", "📍 Tiruppur Surroundings", "ℹ️ Contact for other areas"],
+    "formTitle": "Send an Enquiry",
+    "form": {
+      "name": "Name",
+      "phone": "Phone",
+      "event": "Event Type",
+      "guests": "Guest Count",
+      "message": "Message (Optional)",
+      "submit": "Send via WhatsApp",
+      "placeholders": {
+        "name": "Your name",
+        "phone": "99XXXXXXXX",
+        "event": "Select event",
+        "guests": "Select guest count",
+        "message": "Date, menu preferences, or special requirements..."
+      }
+    },
+    "cardHeading": "Contact Us Directly",
+    "card": {
+      "phone": "Phone",
+      "whatsapp": "WhatsApp",
+      "address": "Address",
+      "hours": "Opening Hours",
+      "capacity": "Service Capacity",
+      "addressText": "1/104, 60 Feet Road,\n(South) Velliyankadu,\nTiruppur - 641604",
+      "hoursText": "Mon – Sun\n7:00 AM – 9:00 PM",
+      "capacityText": "30 to 500+ guests",
+      "enquireNow": "Enquire Now"
+    }
+  },
+  "Footer": {
+    "tagline": "Specializing in home-style catering orders. From weddings to corporate events — 30 to 500+ guests.",
+    "quickLinks": "Quick Links",
+    "services": "Services",
+    "contact": "Contact",
+    "rights": "All rights reserved.",
+    "bottomTagline": "Good Food · Good Vibes · Always Together 🙏"
+  }
+}
