@@ -1,7 +1,7 @@
 /**
  * lib/whatsapp.ts
  * Typed WhatsApp message generator
- * Keeps message format consistent across all entry points (Hero, Contact form, MobileNav)
+ * Keeps message format consistent across all entry points
  */
 
 export interface WhatsAppFormData {
@@ -23,21 +23,28 @@ const WHATSAPP_NUMBER = '919942351280';
  */
 export function generateWhatsAppMessage(data: WhatsAppFormData): string {
   const lines: string[] = [
-    '🌿 *New Enquiry - Sri Ganapathi Mess*',
-    '',
-    `👤 *Name:* ${data.name}`,
-    `📱 *Phone:* ${data.phone}`,
+    'NEW ENQUIRY | Shri Ganapathi Mess',
+    '=================================',
+    `Name:  ${data.name}`,
+    `Phone: ${data.phone}`,
   ];
 
-  if (data.event) lines.push(`🎉 *Event:* ${data.event}`);
-  if (data.guests) lines.push(`👥 *Guests:* ${data.guests}`);
-  if (data.eventDate) lines.push(`📅 *Date:* ${data.eventDate}`);
-  if (data.eventLocation) lines.push(`📍 *Location:* ${data.eventLocation}`);
-  if (data.foodType) lines.push(`🍛 *Food Type:* ${data.foodType}`);
-  if (data.customItems) lines.push(`🍽️ *Special Items:* ${data.customItems}`);
+  if (data.event || data.guests || data.eventDate || data.eventLocation || data.foodType || data.customItems) {
+    lines.push('---------------------------------');
+    lines.push('EVENT DETAILS:');
+    
+    if (data.event) lines.push(`* Type:     ${data.event}`);
+    if (data.guests) lines.push(`* Guests:   ${data.guests}`);
+    if (data.eventDate) lines.push(`* Date:     ${data.eventDate}`);
+    if (data.eventLocation) lines.push(`* Location: ${data.eventLocation}`);
+    if (data.foodType) lines.push(`* Food:     ${data.foodType}`);
+    if (data.customItems) lines.push(`* Special:  ${data.customItems}`);
+  }
+
   if (data.message) {
-    lines.push('');
-    lines.push(`💬 *Message:*\n${data.message}`);
+    lines.push('---------------------------------');
+    lines.push('MESSAGE:');
+    lines.push(data.message);
   }
 
   return lines.join('\n');

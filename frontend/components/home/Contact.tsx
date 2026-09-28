@@ -225,9 +225,9 @@ export default function Contact() {
                       className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
                     >
                       <option value="">Select</option>
-                      <option value="🌱 Vegetarian">🌱 Vegetarian</option>
-                      <option value="🍗 Non-Vegetarian">🍗 Non-Vegetarian</option>
-                      <option value="🌱🍗 Both">🌱🍗 Both</option>
+                      <option value="Vegetarian">🌱 Vegetarian</option>
+                      <option value="Non-Vegetarian">🍗 Non-Vegetarian</option>
+                      <option value="Both">🌱🍗 Both</option>
                     </select>
                   </div>
                 </div>
