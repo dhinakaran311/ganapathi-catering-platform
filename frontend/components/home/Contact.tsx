@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { generateWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
 
 interface ContactFormData {
@@ -34,6 +34,7 @@ export default function Contact() {
   const t = useTranslations('Contact');
   const [formData, setFormData] = useState<ContactFormData>(defaultForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // B11: Auto-save form to localStorage while filling
   useEffect(() => {
@@ -77,7 +78,14 @@ export default function Contact() {
     setFormData(defaultForm);
 
     window.open(whatsappUrl, '_blank');
+
+    // Clear form + show success popup
+    localStorage.removeItem(FORM_STORAGE_KEY);
+    setFormData(defaultForm);
     setIsSubmitting(false);
+    setShowSuccess(true);
+    // Auto-close popup after 6 seconds
+    setTimeout(() => setShowSuccess(false), 6000);
   };
 
   const handleChange = (
@@ -391,6 +399,35 @@ export default function Contact() {
         </div>
 
       </div>
+
+      {/* Success Popup Modal */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-300">
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="absolute top-4 right-4 text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] text-2xl leading-none"
+            >
+              &times;
+            </button>
+            <div className="w-16 h-16 rounded-full bg-[var(--color-green-100)] flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
+              ✅
+            </div>
+            <h3 className="font-display text-2xl font-bold text-[var(--color-brown-900)] text-center mb-2">
+              Enquiry Sent!
+            </h3>
+            <p className="font-body text-sm text-[var(--color-brown-600)] text-center mb-6">
+              WhatsApp opened on your device. Just hit send, and we will reply with a quote within 2 hours.
+            </p>
+            <button
+              onClick={() => setShowSuccess(false)}
+              className="w-full h-12 rounded-lg font-body text-sm font-semibold bg-[var(--color-green-800)] text-white hover:bg-[var(--color-green-900)] transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

@@ -79,7 +79,7 @@ export default function Services() {
             <div className="w-px h-10 bg-[var(--color-ivory-400)] hidden sm:block"></div>
             <div className="flex items-center gap-3">
               <span className="font-body text-3xl">🚚</span>
-              <span className="font-body text-sm text-[var(--color-brown-700)]">Free Delivery<br/>within 15 km</span>
+              <span className="font-body text-sm text-[var(--color-brown-700)]">Free Delivery<br/>within 5 km</span>
             </div>
           </div>
         </div>

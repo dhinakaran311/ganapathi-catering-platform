@@ -110,22 +110,72 @@
       "step5": { "title": "Fresh Food Delivered", "desc": "Hot, fresh food delivered on time to make your event unforgettable." }
     }
   },
+  "Pricing": {
+    "label": "Pricing",
+    "heading": "Simple, honest pricing",
+    "subheading": "Minimum 100 persons · Maximum 500 persons per event",
+    "popular": "Most Popular",
+    "perPerson": "per person",
+    "contactForQuote": "contact for quote",
+    "contactUs": "Contact us",
+    "getQuote": "Get a Quote",
+    "estimateHeading": "Quick Price Estimate",
+    "estimateSubheading": "Drag to select your guest count and get an instant estimate.",
+    "guestCount": "Guest Count",
+    "estimatedTotal": "Estimated total for {count} guests",
+    "deliveryIfApplicable": "+ delivery charges if applicable",
+    "disclaimer": "* This is a rough estimate. Final price is confirmed after WhatsApp consultation.",
+    "deliveryHeading": "Delivery Charges by Area",
+    "deliverySubheading": "Free delivery within 5 km of Velliyangadu. Charges based on distance at Rs.100/km.",
+    "free": "FREE",
+    "kmAway": "{dist} km away",
+    "deliveryNote": "Contact us for delivery to other areas. Max range: 30 km.",
+    "basic": {
+      "name": "Basic Package",
+      "desc": "Simple, satisfying meals for everyday events",
+      "includes": ["Rice + Sambar", "Rasam", "Poriyal", "Appalam", "Curd"]
+    },
+    "full": {
+      "name": "Full Meals Package",
+      "desc": "Traditional full banana-leaf feast — our most popular",
+      "includes": ["Rice + Sambar + Rasam", "Puli Kolambu", "Poriyal", "Vadam + Appalam", "Curd + Payasam"]
+    },
+    "custom": {
+      "name": "Custom Menu",
+      "desc": "Mix and match breakfast, lunch, dinner + non-veg items",
+      "includes": ["Any combo of tiffin items", "Country Chicken Curry / Gravy", "Chettinad Chicken Gravy", "Special event menus", "Fully customizable"]
+    },
+    "areas": {
+      "velliyangadu": "Velliyangadu",
+      "60feet": "60 Feet Road",
+      "pushpa": "Pushpa Theatre Area",
+      "avinashiPalayam": "Avinashi Palayam",
+      "nallur": "Nallur",
+      "veerapandi": "Veerapandi",
+      "avinashi": "Avinashi",
+      "palladam": "Palladam",
+      "perumanallur": "Perumanallur",
+      "kangeyam": "Kangeyam"
+    }
+  },
   "Contact": {
     "label": "Service Areas & Contact",
     "heading": "Near you in Tiruppur",
     "subheading": "Serving Tiruppur and surrounding areas within 30 km",
     "areasTitle": "Service Areas",
-    "areasDesc": "Free delivery within 15 km from Velliyangadu. ₹100/km for areas beyond 15 km. Maximum delivery range: 30 km.",
+    "areasDesc": "Free delivery within 5 km from Velliyangadu. ₹100/km for areas beyond 5 km. Maximum delivery range: 30 km.",
     "areasNote": "* Delivery outside 30 km range not available. Contact us to confirm your location.",
     "areas": [
-      "✅ Tiruppur City (Free)",
       "✅ Velliyangadu (Free)",
       "✅ 60 Feet Road (Free)",
       "✅ Pushpa Theatre Area (Free)",
-      "🚚 Avinashi (₹300)",
-      "🚚 Palladam (₹500)",
-      "🚚 Kangeyam (₹1000)",
-      "🚚 Perumanallur (₹500)",
+      "✅ Avinashi Palayam (Free)",
+      "✅ Nallur (Free)",
+      "✅ Veerapandi (Free)",
+      "🚚 Avinashi (~₹1,800)",
+      "🚚 Palladam (~₹2,000)",
+      "🚚 Perumanallur (~₹1,500)",
+      "🚚 Kangeyam (~₹2,500)",
       "📞 Other areas — Call us"
     ],
     "formTitle": "Send an Enquiry",
@@ -162,7 +212,7 @@
       "addressText": "5, Esswara Moorthy Nagar,\n4th Street, Velliyangadu,\nTiruppur - 641604",
       "hoursText": "Mon – Sun\n7:00 AM – 10:00 PM",
       "capacityText": "100 to 500 guests per event\nMax 2 bulk orders per day",
-      "deliveryText": "Free within 15 km\n₹100/km beyond 15 km\nMax range: 30 km",
+      "deliveryText": "Free within 5 km\n₹100/km beyond 5 km\nMax range: 30 km",
       "enquireNow": "Enquire Now on WhatsApp"
     }
   },

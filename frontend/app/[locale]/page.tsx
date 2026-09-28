@@ -7,6 +7,7 @@ import Services from '@/components/home/Services';
 import Story from '@/components/home/Story';
 import Menu from '@/components/home/Menu';
 import HowItWorks from '@/components/home/HowItWorks';
+import Pricing from '@/components/home/Pricing';
 import Contact from '@/components/home/Contact';
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
         <Story />
         <Menu />
         <HowItWorks />
+        <Pricing />
         <Contact />
       </main>
       <Footer />
