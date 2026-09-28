@@ -3,16 +3,17 @@
     "home": "Home",
     "about": "About Us",
     "services": "Our Services",
-    "menu": "Menu Highlights",
+    "menu": "Menu",
     "howItWorks": "How It Works",
     "contact": "Contact & Location",
     "call": "Call",
     "whatsapp": "WhatsApp"
   },
   "Hero": {
-    "eyebrow": "Tiruppur • Traditional South Indian Catering",
-    "headline": "Authentic flavours for every celebration",
-    "description": "Traditional home-style catering in Tiruppur for weddings, family functions, corporate & community events. Serving 30 to 500+ guests.",
+    "eyebrow": "Tiruppur • Traditional Home-Style Catering",
+    "headline": "பாரம்பரிய உணவு\nஅம்மாவின் சமையலில்",
+    "headlineEn": "Authentic flavours\nfor every celebration",
+    "description": "Traditional home-style catering in Tiruppur for weddings, family functions, corporate & community events. Serving 100 to 500 guests. 10+ years of experience.",
     "whatsappBtn": "Chat on WhatsApp",
     "quoteBtn": "Get a Quote",
     "trustYears": "Years\nExperience",
@@ -20,39 +21,57 @@
     "trustStyle": "Home-style\nCooking"
   },
   "Occasions": {
-    "label": "Occasions",
-    "heading": "Ready for any celebration",
+    "label": "Occasions We Serve",
+    "heading": "Ready for\nany celebration",
     "subheading": "Every occasion, served with heart and tradition",
-    "wedding": "Weddings & Marriage",
+    "wedding": "Weddings (திருமணம்)",
+    "earPiercing": "Ear Piercing (காதுகுத்து)",
+    "engagement": "Engagement (நிச்சயம்)",
+    "houseWarming": "House Warming (புதுமனை)",
+    "babyShower": "Baby Shower (சீமந்தம்)",
+    "birthday": "Birthday Parties",
     "family": "Family Functions",
-    "corporate": "Corporate Catering",
-    "birthday": "Birthday Celebrations",
+    "corporate": "Corporate Events",
+    "school": "School / College Events",
+    "temple": "Temple Functions",
     "community": "Community Events",
     "bulk": "Bulk Food Orders"
   },
   "Story": {
     "label": "Our Story",
-    "heading": "Cooked with love,\nServed with trust",
-    "tagline": "Good Food · Good Vibes · Always Together",
-    "p1": "Sri Ganapathi Mess has been providing exceptional home-style catering in Tiruppur. From weddings to corporate events, our goal is to serve fresh food with warm hospitality.",
-    "p2": "We specialize in customized menus and timely delivery for events ranging from 30 to 500+ guests.",
-    "badgeTitle": "Home-style Cooking",
-    "badgeSub": "Authentic Taste",
+    "heading": "10+ Years of\nAuthentic Cooking",
+    "tagline": "Mother's Traditional Recipes · Large Scale Delivery · Always Fresh",
+    "p1": "Shri Ganapathi Mess has been serving traditional home-style catering in Tiruppur for over 10 years. From small family functions to large weddings, our goal is to bring the authentic taste of Mother's kitchen to your event.",
+    "p2": "We specialize in bulk catering for 100 to 500 guests with customized menus and timely delivery. Our largest event served 300 persons in a single day. We are known for our signature Country Chicken Curry and Chettinad Gravy.",
+    "badgeTitle": "Shri Ganapathi Mess",
+    "badgeSub": "Home-style Cooking · Tiruppur",
     "pillars": {
       "fresh": { "title": "Fresh Ingredients", "desc": "Cooked fresh every day" },
       "taste": { "title": "Home Taste", "desc": "Just like mother's cooking" },
-      "time": { "title": "On Time", "desc": "Punctual delivery" },
+      "time": { "title": "On Time", "desc": "Punctual delivery guaranteed" },
       "custom": { "title": "Custom Menu", "desc": "Tailored to your needs" }
     }
   },
   "Menu": {
-    "label": "Menu Highlights",
-    "heading": "Flavours that bring\neveryone together",
-    "subheading": "Discover our signature dishes",
+    "label": "Our Menu",
+    "heading": "Flavours for\nevery occasion",
+    "subheading": "Starting from ₹90 per person · Full meals at ₹130/person",
     "tabs": {
       "all": "All",
-      "veg": "🌱 Vegetarian",
+      "breakfast": "🌅 Breakfast",
+      "lunch": "🍛 Lunch",
+      "dinner": "🌙 Dinner",
+      "snacks": "🍡 Snacks",
+      "special": "⭐ Special Non-Veg",
+      "veg": "🌱 Veg",
       "nonveg": "🍗 Non-Veg"
+    },
+    "categories": {
+      "breakfast": "Breakfast",
+      "lunch": "Full Meals (Lunch)",
+      "dinner": "Dinner",
+      "snacks": "Snacks",
+      "special": "Special Non-Veg"
     },
     "items": {
       "bananaLeaf": {
@@ -62,70 +81,97 @@
       },
       "biryani": {
         "tag": "🍗 Non-Veg",
-        "title": "Dum Biryani",
-        "desc": "Special biryani made with fragrant spices and fresh meat."
+        "title": "Country Chicken Curry",
+        "desc": "Our signature country chicken curry with authentic spices and traditional preparation."
       },
       "tiffin": {
         "tag": "🌿 Tiffin",
         "title": "Morning Tiffin Spread",
-        "desc": "Traditional breakfast featuring idli, dosa, sambar, chutney, and filter coffee."
+        "desc": "Traditional breakfast featuring idli, dosa, pongal, sambar, chutney, and filter coffee."
       }
     },
-    "fullMenuText": "Contact us on WhatsApp for the full menu",
-    "fullMenuBtn": "Get Full Menu"
+    "fullMenuText": "Contact us on WhatsApp for the full menu and pricing for your event",
+    "fullMenuBtn": "Get Full Menu on WhatsApp",
+    "pricingNote": "Starting from ₹90/person · Full Meals Package: ₹130/person · Min. 100 persons",
+    "filterLabel": "Filter by:",
+    "vegLabel": "🌱 Veg",
+    "nonvegLabel": "🍗 Non-Veg",
+    "eggLabel": "🥚 Egg",
+    "signatureLabel": "⭐ Signature Dish"
   },
   "HowItWorks": {
     "label": "How We Work",
-    "heading": "Your order confirmed\nin 3 simple steps",
+    "heading": "Your order confirmed\nin 5 simple steps",
     "steps": {
-      "step1": { "title": "Enquire", "desc": "Tell us the details via WhatsApp or phone — occasion, date, and guest count." },
-      "step2": { "title": "Get Your Quote", "desc": "We will contact you within 2 hours with a custom menu and pricing." },
-      "step3": { "title": "Enjoy Your Feast", "desc": "Fresh, delicious food delivered on time to make your event unforgettable." }
+      "step1": { "title": "Fill Enquiry Form", "desc": "Tell us your event details — occasion, date, guest count, and location." },
+      "step2": { "title": "Get Quote on WhatsApp", "desc": "We contact you within 2 hours with a custom menu and pricing quote." },
+      "step3": { "title": "Customize Your Menu", "desc": "Choose from our full menu or request special dishes for your event." },
+      "step4": { "title": "Book with Advance", "desc": "Confirm your order with a small advance payment via GPay, UPI, or Cash." },
+      "step5": { "title": "Fresh Food Delivered", "desc": "Hot, fresh food delivered on time to make your event unforgettable." }
     }
   },
   "Contact": {
     "label": "Service Areas & Contact",
     "heading": "Near you in Tiruppur",
-    "subheading": "Serving Tiruppur and surrounding areas",
+    "subheading": "Serving Tiruppur and surrounding areas within 30 km",
     "areasTitle": "Service Areas",
-    "areasDesc": "We provide catering services in Tiruppur and surrounding areas. Please contact us to confirm delivery to specific locations.",
-    "areasNote": "[Note: Service areas will be updated soon]",
-    "areas": ["📍 Tiruppur", "📍 Velliyankadu", "📍 60 Feet Road", "📍 Tiruppur Surroundings", "ℹ️ Contact for other areas"],
+    "areasDesc": "Free delivery within 15 km from Velliyangadu. ₹100/km for areas beyond 15 km. Maximum delivery range: 30 km.",
+    "areasNote": "* Delivery outside 30 km range not available. Contact us to confirm your location.",
+    "areas": [
+      "✅ Tiruppur City (Free)",
+      "✅ Velliyangadu (Free)",
+      "✅ 60 Feet Road (Free)",
+      "✅ Pushpa Theatre Area (Free)",
+      "🚚 Avinashi (₹300)",
+      "🚚 Palladam (₹500)",
+      "🚚 Kangeyam (₹1000)",
+      "🚚 Perumanallur (₹500)",
+      "📞 Other areas — Call us"
+    ],
     "formTitle": "Send an Enquiry",
     "form": {
       "name": "Name",
-      "phone": "Phone",
+      "phone": "Phone Number",
       "event": "Event Type",
       "guests": "Guest Count",
-      "message": "Message (Optional)",
-      "submit": "Send via WhatsApp",
+      "foodType": "Food Type",
+      "eventDate": "Event Date",
+      "eventLocation": "Event Location",
+      "customItems": "Special Dishes (Optional)",
+      "message": "Additional Message (Optional)",
+      "submit": "Send Enquiry via WhatsApp",
+      "note": "Tapping the button opens WhatsApp with your details pre-filled. Just tap Send!",
       "placeholders": {
         "name": "Your name",
-        "phone": "99XXXXXXXX",
-        "event": "Select event",
+        "phone": "Your phone number",
+        "event": "Select event type",
         "guests": "Select guest count",
-        "message": "Date, menu preferences, or special requirements..."
+        "eventLocation": "e.g. Tiruppur, Avinashi...",
+        "customItems": "e.g. Country Chicken, Pongal...",
+        "message": "Any special requirements or questions..."
       }
     },
     "cardHeading": "Contact Us Directly",
     "card": {
-      "phone": "Phone",
+      "phone": "Phone / Call",
       "whatsapp": "WhatsApp",
       "address": "Address",
       "hours": "Opening Hours",
       "capacity": "Service Capacity",
-      "addressText": "1/104, 60 Feet Road,\n(South) Velliyankadu,\nTiruppur - 641604",
-      "hoursText": "Mon – Sun\n7:00 AM – 9:00 PM",
-      "capacityText": "30 to 500+ guests",
-      "enquireNow": "Enquire Now"
+      "delivery": "Delivery",
+      "addressText": "5, Esswara Moorthy Nagar,\n4th Street, Velliyangadu,\nTiruppur - 641604",
+      "hoursText": "Mon – Sun\n7:00 AM – 10:00 PM",
+      "capacityText": "100 to 500 guests per event\nMax 2 bulk orders per day",
+      "deliveryText": "Free within 15 km\n₹100/km beyond 15 km\nMax range: 30 km",
+      "enquireNow": "Enquire Now on WhatsApp"
     }
   },
   "Footer": {
-    "tagline": "Specializing in home-style catering orders. From weddings to corporate events — 30 to 500+ guests.",
+    "tagline": "Traditional home-style catering in Tiruppur for weddings, corporate events and family functions. 100 to 500 guests. 10+ years experience.",
     "quickLinks": "Quick Links",
     "services": "Services",
     "contact": "Contact",
     "rights": "All rights reserved.",
-    "bottomTagline": "Good Food · Good Vibes · Always Together 🙏"
+    "bottomTagline": "Shri Ganapathi Mess · Tiruppur · Traditional Home-Style Catering 🙏"
   }
 }
