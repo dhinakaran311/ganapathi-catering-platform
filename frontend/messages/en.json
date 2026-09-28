@@ -133,12 +133,12 @@
     "basic": {
       "name": "Basic Package",
       "desc": "Simple, satisfying meals for everyday events",
-      "includes": ["Rice + Sambar", "Rasam", "Poriyal", "Appalam", "Curd"]
+      "includes": ["Rice + Sambar", "Rasam", "Puli Kolambu", "Poriyal", "Appalam", "Curd", "Payasam"]
     },
     "full": {
       "name": "Full Meals Package",
       "desc": "Traditional full banana-leaf feast — our most popular",
-      "includes": ["Rice + Sambar + Rasam", "Puli Kolambu", "Poriyal", "Vadam + Appalam", "Curd + Payasam"]
+      "includes": ["Rice + Sambar + Rasam", "Fish Kolambu + Chicken Kolambu", "Puli Kolambu", "Poriyal", "Vadam + Vadai", "Appalam", "Curd + Payasam"]
     },
     "custom": {
       "name": "Custom Menu",

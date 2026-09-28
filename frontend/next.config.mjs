@@ -5,7 +5,7 @@ const withNextIntl = createNextIntlPlugin();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
    allowedDevOrigins: [
-    'extra-bicycle-calculators-mistress.trycloudflare.com',
+    'temporal-judy-apparatus-trading.trycloudflare.com',
   ],
 };
 

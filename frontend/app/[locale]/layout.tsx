@@ -32,7 +32,7 @@ const notoSansTamil = Noto_Sans_Tamil({
 
 export const metadata: Metadata = {
   title: "Shri Ganapathi Mess - Best Catering in Tiruppur | 100-500 Persons",
-  description: "Traditional home-style catering in Tiruppur for weddings, corporate events & family functions. Free delivery within 15km. 10+ years experience. Serving 100-500 guests. Call: 9942351280.",
+  description: "Traditional home-style catering in Tiruppur for weddings, corporate events & family functions. Free delivery within 5km. 10+ years experience. Serving 100-500 guests. Call: 9942351280.",
   keywords: [
     "Tiruppur catering",
     "bulk food order Tiruppur",
