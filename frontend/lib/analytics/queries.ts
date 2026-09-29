@@ -3,6 +3,7 @@
 //   FOLLOW_UP, CONFIRMED, COMPLETED, CANCELLED
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export interface DashboardStats {
   totalEnquiries: number;
@@ -11,7 +12,10 @@ export interface DashboardStats {
   totalCustomers: number;
   enquiriesThisWeek: number;
   enquiriesLastWeek: number;
-  totalRevenue: number;          // sum of paid invoices
+  // Financial metrics (from verified payments — source of truth)
+  totalInvoiced: number;         // sum of all invoice total_amount
+  totalReceived: number;         // sum of VERIFIED payments
+  totalOutstanding: number;      // totalInvoiced - totalReceived
 }
 
 export interface EnquirySummary {
@@ -27,10 +31,11 @@ export interface EnquirySummary {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const supabase = await createClient();
+  const supabase      = await createClient();
+  const adminSupabase = createAdminClient();
 
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const startOfMonth   = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const startOfThisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const startOfLastWeek = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -41,7 +46,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     customersRes,
     thisWeekRes,
     lastWeekRes,
-    revenueRes,
+    invoicesRes,
+    paymentsRes,
   ] = await Promise.all([
     supabase.from('enquiries').select('id', { count: 'exact', head: true }),
     supabase.from('enquiries').select('id', { count: 'exact', head: true }).eq('status', 'NEW'),
@@ -60,27 +66,39 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select('id', { count: 'exact', head: true })
       .gte('created_at', startOfLastWeek)
       .lt('created_at', startOfThisWeek),
-    supabase
+    // All non-cancelled invoices (canonical uppercase status from 014_invoice_status_canonical.sql)
+    adminSupabase
       .from('invoices')
       .select('total_amount')
-      .eq('status', 'paid'),
+      .neq('status', 'CANCELLED'),
+    // Only VERIFIED payments (source of truth for amount received)
+    adminSupabase
+      .from('payments')
+      .select('amount')
+      .eq('status', 'VERIFIED')
+      .eq('is_deleted', false),
   ]);
 
-  const totalRevenue = (revenueRes.data ?? []).reduce(
-    (s: number, r: { total_amount: number }) => s + (r.total_amount ?? 0),
-    0
+  const totalInvoiced = (invoicesRes.data ?? []).reduce(
+    (s: number, r: { total_amount: number }) => s + (r.total_amount ?? 0), 0
+  );
+  const totalReceived = (paymentsRes.data ?? []).reduce(
+    (s: number, r: { amount: number }) => s + Number(r.amount ?? 0), 0
   );
 
   return {
-    totalEnquiries: totalRes.count ?? 0,
-    newEnquiries: newRes.count ?? 0,
+    totalEnquiries:    totalRes.count ?? 0,
+    newEnquiries:      newRes.count ?? 0,
     confirmedThisMonth: confirmedMonthRes.count ?? 0,
-    totalCustomers: customersRes.count ?? 0,
+    totalCustomers:    customersRes.count ?? 0,
     enquiriesThisWeek: thisWeekRes.count ?? 0,
     enquiriesLastWeek: lastWeekRes.count ?? 0,
-    totalRevenue,
+    totalInvoiced,
+    totalReceived,
+    totalOutstanding:  Math.max(totalInvoiced - totalReceived, 0),
   };
 }
+
 
 export async function getRecentEnquiries(limit = 10): Promise<EnquirySummary[]> {
   const supabase = await createClient();

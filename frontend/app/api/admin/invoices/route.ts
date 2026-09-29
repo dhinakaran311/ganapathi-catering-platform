@@ -44,8 +44,7 @@ export async function POST(req: NextRequest) {
       discount_amount: body.discount_amount ?? 0,
       total_amount: body.total_amount ?? 0,
       invoice_data: body.invoice_data ?? {},
-      status: body.status ?? 'pending',
-      payment_method: body.payment_method ?? null,
+      status: body.status ?? 'DRAFT',  // canonical uppercase; DB migrated by 014_invoice_status_canonical.sql
       notes: body.notes ?? null,
       invoice_number: '', // DB trigger fills this
     })
@@ -100,7 +99,9 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* DELETE /api/admin/invoices?id=xxx */
+/* DELETE /api/admin/invoices?id=xxx
+   Blocked if the invoice has any payment records.
+   Cancel the invoice via PATCH { id, status: 'cancelled' } instead. */
 export async function DELETE(req: NextRequest) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -109,6 +110,22 @@ export async function DELETE(req: NextRequest) {
 
   const id = req.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  // Guard: prevent deletion when payment records exist
+  const { count } = await supabase
+    .from('payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('invoice_id', id);
+
+  if (count && count > 0) {
+    return NextResponse.json(
+      {
+        error: 'Cannot delete an invoice that has payment records. Cancel the invoice instead.',
+        hint: 'PATCH { id, status: "cancelled" }',
+      },
+      { status: 422 }
+    );
+  }
 
   const { error } = await supabase.from('invoices').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
