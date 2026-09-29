@@ -1,7 +1,41 @@
-// types/invoice.ts — Phase 5: Invoice type definitions
+// types/invoice.ts — Invoice type definitions
+// Invoice status is SEPARATE from payment status.
+//
+// INVOICE STATUS (document lifecycle):
+//   DRAFT         — created, not yet sent to customer
+//   SENT          — sent to customer via WhatsApp/PDF
+//   PARTIALLY_PAID— at least one verified payment, but balance remains
+//   PAID          — fully paid (balance = 0)
+//   CANCELLED     — invoice voided
+//
+// PAYMENT STATUS (derived from payments table — see types/payment.ts):
+//   UNPAID / PARTIALLY_PAID / PAID
+//
+// Do NOT use lowercase 'draft', 'pending', 'sent', 'paid', 'cancelled'.
+// Legacy DB values are migrated in 014_invoice_status_canonical.sql.
 
-export type InvoiceStatus = 'draft' | 'pending' | 'sent' | 'paid' | 'cancelled';
-export type PaymentMethod = 'cash' | 'upi' | 'bank_transfer' | 'cheque';
+export const INVOICE_STATUSES = ['DRAFT', 'SENT', 'PARTIALLY_PAID', 'PAID', 'CANCELLED'] as const;
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  DRAFT:          'Draft',
+  SENT:           'Sent',
+  PARTIALLY_PAID: 'Partially Paid',
+  PAID:           'Paid',
+  CANCELLED:      'Cancelled',
+};
+
+export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, string> = {
+  DRAFT:          'bg-gray-100 text-gray-600',
+  SENT:           'bg-blue-100 text-blue-700',
+  PARTIALLY_PAID: 'bg-orange-100 text-orange-700',
+  PAID:           'bg-green-100 text-green-700',
+  CANCELLED:      'bg-red-100 text-red-700',
+};
+
+// Legacy lowercase payment method (still used in invoice_data JSONB for historical invoices)
+// New payments use PaymentMethodType from types/payment.ts (uppercase)
+export type LegacyPaymentMethod = 'cash' | 'upi' | 'bank_transfer' | 'cheque';
 
 export interface InvoiceLineItem {
   id: string;
@@ -38,12 +72,13 @@ export interface InvoiceData {
   taxAmount: number;
   total: number;
 
-  // Advance / balance
-  advancePaid: number;
-  balanceDue: number;
+  // Legacy advance/balance — kept for backward-compat display only.
+  // Source of truth is the payments table. Do NOT use this for calculations.
+  advancePaid?: number;
+  balanceDue?: number;
 
-  // Payment info
-  paymentMethod?: PaymentMethod;
+  // Legacy payment info — kept for backward-compat display only.
+  paymentMethod?: LegacyPaymentMethod;
   upiId?: string;
   bankDetails?: string;
 
@@ -67,7 +102,8 @@ export interface Invoice {
   status: InvoiceStatus;
   sent_at: string | null;
   paid_at: string | null;
-  payment_method: PaymentMethod | null;
+  // Legacy columns — kept for backward compat; new payment data is in payments table
+  payment_method: LegacyPaymentMethod | null;
   upi_reference: string | null;
   notes: string | null;
   created_at: string;
