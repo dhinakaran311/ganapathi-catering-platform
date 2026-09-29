@@ -4,29 +4,20 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-
-const STATUSES = ['pending', 'confirmed', 'cancelled', 'completed'] as const;
-type Status = typeof STATUSES[number];
-
-const statusStyles: Record<Status, string> = {
-  pending:   'bg-yellow-100 text-yellow-800 border-yellow-200',
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  cancelled: 'bg-red-100 text-red-800 border-red-200',
-  completed: 'bg-[var(--color-ivory-300)] text-[var(--color-brown-700)] border-[var(--color-ivory-400)]',
-};
+import { ENQUIRY_STATUSES, ENQUIRY_STATUS_LABELS, ENQUIRY_STATUS_COLORS, EnquiryStatus } from '@/types/enquiry';
 
 interface StatusUpdaterProps {
   enquiryId: string;
-  currentStatus: Status;
+  currentStatus: EnquiryStatus;
 }
 
 export default function StatusUpdater({ enquiryId, currentStatus }: StatusUpdaterProps) {
-  const [status, setStatus] = useState<Status>(currentStatus);
+  const [status, setStatus] = useState<EnquiryStatus>(currentStatus);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const handleChange = async (next: Status) => {
+  const handleChange = async (next: EnquiryStatus) => {
     if (next === status) return;
     setLoading(true);
     setError('');
@@ -49,19 +40,19 @@ export default function StatusUpdater({ enquiryId, currentStatus }: StatusUpdate
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        {STATUSES.map((s) => (
+        {ENQUIRY_STATUSES.map((s) => (
           <button
             key={s}
             id={`status-btn-${s}`}
             disabled={loading}
             onClick={() => handleChange(s)}
-            className={`px-3 py-1.5 rounded-full font-body text-xs font-semibold border capitalize transition-all ${
+            className={`px-3 py-1.5 rounded-full font-body text-xs font-semibold border transition-all ${
               status === s
-                ? statusStyles[s] + ' ring-2 ring-offset-1 ring-current'
+                ? ENQUIRY_STATUS_COLORS[s] + ' ring-2 ring-offset-1 ring-current'
                 : 'bg-white text-[var(--color-brown-500)] border-[var(--color-ivory-300)] hover:bg-[var(--color-ivory-100)]'
             } disabled:opacity-60 disabled:cursor-not-allowed`}
           >
-            {s}
+            {ENQUIRY_STATUS_LABELS[s]}
           </button>
         ))}
       </div>

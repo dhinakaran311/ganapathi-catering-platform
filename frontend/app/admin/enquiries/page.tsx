@@ -3,13 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-
-const statusStyles: Record<string, string> = {
-  pending:   'bg-yellow-100 text-yellow-800 border-yellow-200',
-  confirmed: 'bg-green-100 text-green-800 border-green-200',
-  cancelled: 'bg-red-100 text-red-800 border-red-200',
-  completed: 'bg-[var(--color-ivory-300)] text-[var(--color-brown-700)] border-[var(--color-ivory-400)]',
-};
+import { ENQUIRY_STATUSES, ENQUIRY_STATUS_COLORS, ENQUIRY_STATUS_LABELS, EnquiryStatus } from '@/types/enquiry';
 
 interface SearchParams {
   status?: string;
@@ -68,22 +62,37 @@ export default async function EnquiriesPage({
 
         {/* Status filter */}
         <div className="flex gap-2 flex-wrap">
-          {['all', 'pending', 'confirmed', 'cancelled', 'completed'].map((s) => (
+          <Link
+            href={`/admin/enquiries?status=all${q ? `&q=${q}` : ''}`}
+            className={`px-3 py-2 rounded-lg font-body text-xs font-semibold transition-colors ${
+              !status || status === 'all'
+                ? 'text-white'
+                : 'text-[var(--color-brown-600)] bg-[var(--color-ivory-100)] hover:bg-[var(--color-ivory-200)]'
+            }`}
+            style={
+              !status || status === 'all'
+                ? { backgroundColor: 'var(--color-green-800)' }
+                : {}
+            }
+          >
+            All
+          </Link>
+          {ENQUIRY_STATUSES.map((s) => (
             <Link
               key={s}
               href={`/admin/enquiries?status=${s}${q ? `&q=${q}` : ''}`}
-              className={`px-3 py-2 rounded-lg font-body text-xs font-semibold capitalize transition-colors ${
-                (s === 'all' && !status) || status === s
+              className={`px-3 py-2 rounded-lg font-body text-xs font-semibold transition-colors ${
+                status === s
                   ? 'text-white'
                   : 'text-[var(--color-brown-600)] bg-[var(--color-ivory-100)] hover:bg-[var(--color-ivory-200)]'
               }`}
               style={
-                (s === 'all' && !status) || status === s
+                status === s
                   ? { backgroundColor: 'var(--color-green-800)' }
                   : {}
               }
             >
-              {s}
+              {ENQUIRY_STATUS_LABELS[s]}
             </Link>
           ))}
         </div>
@@ -139,11 +148,11 @@ export default async function EnquiriesPage({
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-body text-xs font-semibold border capitalize ${
-                          statusStyles[enq.status] ?? statusStyles.pending
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-body text-xs font-semibold border ${
+                          ENQUIRY_STATUS_COLORS[enq.status as EnquiryStatus] ?? 'bg-gray-100 text-gray-800 border-gray-200'
                         }`}
                       >
-                        {enq.status}
+                        {ENQUIRY_STATUS_LABELS[enq.status as EnquiryStatus] ?? enq.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">

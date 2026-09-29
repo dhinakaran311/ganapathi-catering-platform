@@ -3,22 +3,11 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ClipboardList, Users, TrendingUp, Clock, ArrowRight, IndianRupee, Wifi } from 'lucide-react';
+import { ClipboardList, TrendingUp, Clock, ArrowRight, IndianRupee, Wifi, AlertCircle } from 'lucide-react';
 import StatsCard from '@/components/admin/StatsCard';
 import { getDashboardStats, getRecentEnquiries } from '@/lib/analytics/queries';
 import { StatsCardSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
-
-// Map DB status → display label + colour
-const STATUS_META: Record<string, { label: string; className: string }> = {
-  NEW:        { label: 'New',        className: 'bg-blue-100 text-blue-800 border-blue-200' },
-  CONTACTED:  { label: 'Contacted',  className: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-  DISCUSSION: { label: 'Discussion', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  QUOTE_SENT: { label: 'Quote Sent', className: 'bg-orange-100 text-orange-800 border-orange-200' },
-  FOLLOW_UP:  { label: 'Follow Up',  className: 'bg-purple-100 text-purple-800 border-purple-200' },
-  CONFIRMED:  { label: 'Confirmed',  className: 'bg-green-100 text-green-800 border-green-200' },
-  COMPLETED:  { label: 'Completed',  className: 'bg-gray-100 text-gray-600 border-gray-200' },
-  CANCELLED:  { label: 'Cancelled',  className: 'bg-red-100 text-red-700 border-red-200' },
-};
+import { ENQUIRY_STATUS_COLORS, ENQUIRY_STATUS_LABELS, EnquiryStatus } from '@/types/enquiry';
 
 // Map source → badge text
 const SOURCE_BADGE: Record<string, string> = {
@@ -43,8 +32,8 @@ async function DashboardContent() {
 
   return (
     <>
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      {/* Stats Grid — Row 1: Enquiry stats */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
         <StatsCard
           id="stat-total-enquiries"
           label="Total Enquiries"
@@ -70,12 +59,40 @@ async function DashboardContent() {
           accentColor="brown"
         />
         <StatsCard
-          id="stat-revenue"
-          label="Total Revenue"
-          value={fmt(stats.totalRevenue)}
+          id="stat-customers"
+          label="Total Customers"
+          value={stats.totalCustomers}
+          icon={<ClipboardList size={20} />}
+          trend={null}
+          accentColor="green"
+        />
+      </div>
+
+      {/* Stats Grid — Row 2: Financial stats (from verified payments) */}
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+        <StatsCard
+          id="stat-total-invoiced"
+          label="Total Invoiced"
+          value={fmt(stats.totalInvoiced)}
+          icon={<IndianRupee size={20} />}
+          trend={null}
+          accentColor="brown"
+        />
+        <StatsCard
+          id="stat-received"
+          label="Amount Received"
+          value={fmt(stats.totalReceived)}
           icon={<IndianRupee size={20} />}
           trend={null}
           accentColor="green"
+        />
+        <StatsCard
+          id="stat-outstanding"
+          label="Outstanding"
+          value={fmt(stats.totalOutstanding)}
+          icon={<AlertCircle size={20} />}
+          trend={null}
+          accentColor="gold"
         />
       </div>
 
@@ -133,7 +150,8 @@ async function DashboardContent() {
                 </tr>
               ) : (
                 recentEnquiries.map((enq) => {
-                  const statusMeta = STATUS_META[enq.status] ?? STATUS_META.NEW;
+                  const statusColor = ENQUIRY_STATUS_COLORS[enq.status as EnquiryStatus] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+                  const statusLabel = ENQUIRY_STATUS_LABELS[enq.status as EnquiryStatus] ?? enq.status;
                   return (
                     <tr key={enq.id} className="hover:bg-[var(--color-ivory-100)] transition-colors group">
                       <td className="px-4 py-3 font-body text-sm font-semibold text-[var(--color-brown-900)]">
@@ -159,8 +177,8 @@ async function DashboardContent() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-body text-xs font-semibold border ${statusMeta.className}`}>
-                          {statusMeta.label}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-body text-xs font-semibold border ${statusColor}`}>
+                          {statusLabel}
                         </span>
                       </td>
                       <td className="px-4 py-3">

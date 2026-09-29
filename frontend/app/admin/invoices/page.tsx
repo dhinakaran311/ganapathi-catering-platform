@@ -1,16 +1,23 @@
-// app/admin/invoices/page.tsx — Phase 5: All Invoices List
+// app/admin/invoices/page.tsx — Updated with Payment Status from payments table
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
-import { FileText, Plus, CheckCircle, Clock, Send, XCircle } from 'lucide-react';
-import type { Invoice, InvoiceData } from '@/types/invoice';
+import { FileText, Plus, CheckCircle, Clock, Send, XCircle, IndianRupee } from 'lucide-react';
+import type { Invoice, InvoiceData, InvoiceStatus } from '@/types/invoice';
+import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS } from '@/types/invoice';
+import {
+  INVOICE_PAYMENT_STATUS_LABELS,
+  INVOICE_PAYMENT_STATUS_COLORS,
+  type InvoicePaymentSummary,
+} from '@/types/payment';
 
-const STATUS_CONFIG = {
-  draft:     { label: 'Draft',     color: 'bg-gray-100 text-gray-600',    icon: FileText },
-  pending:   { label: 'Pending',   color: 'bg-orange-100 text-orange-700', icon: Clock },
-  sent:      { label: 'Sent',      color: 'bg-blue-100 text-blue-700',    icon: Send },
-  paid:      { label: 'Paid',      color: 'bg-green-100 text-green-700',  icon: CheckCircle },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700',      icon: XCircle },
+const INVOICE_STATUS_ICON: Record<InvoiceStatus, typeof FileText> = {
+  DRAFT:          FileText,
+  SENT:           Send,
+  PARTIALLY_PAID: Clock,
+  PAID:           CheckCircle,
+  CANCELLED:      XCircle,
 };
 
 const fmt = (n: number) =>
@@ -18,29 +25,39 @@ const fmt = (n: number) =>
 
 export default async function InvoicesPage() {
   const supabase = await createClient();
+  const adminSupabase = createAdminClient();
 
   const { data: invoices, error } = await supabase
     .from('invoices')
     .select('*')
     .order('created_at', { ascending: false });
 
-  // Summary stats
-  const total_invoices = invoices?.length ?? 0;
-  const paid_invoices = invoices?.filter((i) => i.status === 'paid').length ?? 0;
-  const pending_invoices = invoices?.filter((i) => ['pending', 'sent'].includes(i.status)).length ?? 0;
-  const total_revenue = invoices?.filter((i) => i.status === 'paid').reduce((s, i) => s + (i.total_amount ?? 0), 0) ?? 0;
-  const pending_revenue = invoices?.filter((i) => i.status !== 'paid' && i.status !== 'cancelled').reduce((s, i) => s + (i.total_amount ?? 0), 0) ?? 0;
+  // Load payment summaries from the DB view for all invoices
+  const { data: summaries } = await adminSupabase
+    .from('invoice_payment_summary')
+    .select('*');
+
+  const summaryMap = new Map<string, InvoicePaymentSummary>(
+    (summaries ?? []).map((s: InvoicePaymentSummary) => [s.invoice_id, s])
+  );
+
+  // Financial aggregates from verified payments (source of truth)
+  const totalInvoiced   = (invoices ?? []).reduce((s, i) => s + (i.total_amount ?? 0), 0);
+  const totalReceived   = (summaries ?? []).reduce((s: number, sm: InvoicePaymentSummary) => s + Number(sm.amount_received), 0);
+  const totalOutstanding = Math.max(totalInvoiced - totalReceived, 0);
+  const paidCount       = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'PAID').length;
+  const partialCount    = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'PARTIALLY_PAID').length;
+  const unpaidCount     = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'UNPAID').length;
+  const totalInvoices   = invoices?.length ?? 0;
 
   return (
     <div>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-display text-3xl font-bold text-[var(--color-brown-900)]">
-            Invoices
-          </h1>
+          <h1 className="font-display text-3xl font-bold text-[var(--color-brown-900)]">Invoices</h1>
           <p className="font-body text-sm text-[var(--color-brown-500)] mt-1">
-            All generated invoices — click any row to edit
+            All generated invoices — payment status calculated from verified transactions
           </p>
         </div>
         <Link
@@ -51,18 +68,32 @@ export default async function InvoicesPage() {
         </Link>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Financial Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {[
-          { label: 'Total Invoices', value: total_invoices, sub: 'all time', color: 'text-[var(--color-brown-900)]' },
-          { label: 'Paid', value: paid_invoices, sub: `${fmt(total_revenue)} received`, color: 'text-green-700' },
-          { label: 'Pending / Sent', value: pending_invoices, sub: `${fmt(pending_revenue)} outstanding`, color: 'text-orange-700' },
-          { label: 'Total Revenue', value: fmt(total_revenue), sub: 'from paid invoices', color: 'text-[var(--color-green-800)]' },
+          { label: 'Total Invoiced',  value: fmt(totalInvoiced),   sub: `${totalInvoices} invoices`, color: 'text-[var(--color-brown-900)]' },
+          { label: 'Amount Received', value: fmt(totalReceived),   sub: 'from verified payments',   color: 'text-green-700' },
+          { label: 'Outstanding',     value: fmt(totalOutstanding), sub: 'balance due',              color: 'text-orange-700' },
+          { label: 'Paid',            value: paidCount,             sub: `${partialCount} partial · ${unpaidCount} unpaid`, color: 'text-[var(--color-green-800)]' },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-5">
             <p className="font-body text-xs text-[var(--color-brown-400)] uppercase tracking-wide mb-1">{s.label}</p>
             <p className={`font-display text-2xl font-bold ${s.color}`}>{s.value}</p>
             <p className="font-body text-xs text-[var(--color-brown-400)] mt-0.5">{s.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Payment Status Quick Counts */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        {[
+          { label: 'Paid', count: paidCount, cls: 'text-green-700 bg-green-50 border-green-200' },
+          { label: 'Partially Paid', count: partialCount, cls: 'text-orange-700 bg-orange-50 border-orange-200' },
+          { label: 'Unpaid', count: unpaidCount, cls: 'text-red-700 bg-red-50 border-red-200' },
+        ].map(({ label, count, cls }) => (
+          <div key={label} className={`rounded-xl border px-4 py-3 text-center ${cls}`}>
+            <p className="font-display text-2xl font-bold">{count}</p>
+            <p className="font-body text-xs font-semibold">{label}</p>
           </div>
         ))}
       </div>
@@ -89,7 +120,7 @@ export default async function InvoicesPage() {
             <table className="w-full">
               <thead className="bg-[var(--color-ivory-100)] border-b border-[var(--color-ivory-300)]">
                 <tr>
-                  {['Invoice #', 'Customer', 'Event', 'Date', 'Amount', 'Balance', 'Status', ''].map((h) => (
+                  {['Invoice #', 'Customer', 'Event', 'Date', 'Total', 'Received', 'Balance', 'Payment', 'Status', ''].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-body text-xs font-semibold uppercase tracking-wide text-[var(--color-brown-500)]">
                       {h}
                     </th>
@@ -98,10 +129,24 @@ export default async function InvoicesPage() {
               </thead>
               <tbody>
                 {(invoices as Invoice[]).map((inv) => {
-                  const data = inv.invoice_data as InvoiceData;
-                  const cfg = STATUS_CONFIG[inv.status] ?? STATUS_CONFIG.pending;
-                  const StatusIcon = cfg.icon;
-                  const balance = data?.balanceDue ?? (inv.total_amount - (data?.advancePaid ?? 0));
+                  const data      = inv.invoice_data as InvoiceData;
+                  const status    = (inv.status as InvoiceStatus) ?? 'DRAFT';
+                  const StatusIcon = INVOICE_STATUS_ICON[status] ?? FileText;
+                  const statusColor = INVOICE_STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-600';
+                  const statusLabel = INVOICE_STATUS_LABELS[status] ?? status;
+                  const summary   = summaryMap.get(inv.id);
+
+                  // Prefer new payments table; fall back to legacy invoice_data for old records
+                  const amountReceived = summary
+                    ? Number(summary.amount_received)
+                    : (data?.advancePaid ?? 0);
+                  const balanceDue = summary
+                    ? Number(summary.balance_due)
+                    : Math.max(inv.total_amount - (data?.advancePaid ?? 0), 0);
+                  const paymentStatus = summary?.payment_status ?? (amountReceived === 0 ? 'UNPAID' : amountReceived >= inv.total_amount ? 'PAID' : 'PARTIALLY_PAID');
+                  const psColor = INVOICE_PAYMENT_STATUS_COLORS[paymentStatus as keyof typeof INVOICE_PAYMENT_STATUS_COLORS];
+                  const psLabel = INVOICE_PAYMENT_STATUS_LABELS[paymentStatus as keyof typeof INVOICE_PAYMENT_STATUS_LABELS];
+
                   return (
                     <tr key={inv.id} className="border-b border-[var(--color-ivory-200)] hover:bg-[var(--color-ivory-100)] transition-colors group">
                       <td className="px-4 py-4">
@@ -123,17 +168,25 @@ export default async function InvoicesPage() {
                       <td className="px-4 py-4 font-body text-sm font-semibold text-[var(--color-brown-900)]">
                         {fmt(inv.total_amount)}
                       </td>
+                      <td className="px-4 py-4 font-body text-sm font-semibold text-green-700">
+                        {fmt(amountReceived)}
+                      </td>
                       <td className="px-4 py-4">
-                        {balance > 0 ? (
-                          <span className="font-body text-sm font-semibold text-orange-600">{fmt(balance)}</span>
+                        {balanceDue > 0 ? (
+                          <span className="font-body text-sm font-semibold text-orange-600">{fmt(balanceDue)}</span>
                         ) : (
                           <span className="font-body text-sm font-semibold text-green-600">✅ Clear</span>
                         )}
                       </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-body text-xs font-semibold ${cfg.color}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-body text-xs font-semibold border ${psColor}`}>
+                          {psLabel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-body text-xs font-semibold ${statusColor}`}>
                           <StatusIcon size={12} />
-                          {cfg.label}
+                          {statusLabel}
                         </span>
                       </td>
                       <td className="px-4 py-4">
@@ -142,18 +195,25 @@ export default async function InvoicesPage() {
                             href={`/admin/enquiries/${inv.enquiry_id}/invoice`}
                             className="font-body text-xs font-semibold text-[var(--color-green-800)] hover:underline opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            Edit →
+                            Manage →
                           </Link>
                         )}
                       </td>
                     </tr>
                   );
                 })}
+
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Note about legacy data */}
+      <p className="mt-4 font-body text-xs text-[var(--color-brown-400)] text-center">
+        <IndianRupee size={10} className="inline" /> Amount Received is calculated from verified payments in the payments table.
+        Legacy advance payments have been automatically migrated.
+      </p>
     </div>
   );
 }

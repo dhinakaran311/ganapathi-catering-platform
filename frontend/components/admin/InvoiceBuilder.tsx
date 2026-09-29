@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useId } from 'react';
 import { Plus, Trash2, MessageCircle, Save, FileText, ChevronDown, ChevronUp, Copy } from 'lucide-react';
-import type { InvoiceLineItem, InvoiceData, PaymentMethod } from '@/types/invoice';
+import type { InvoiceLineItem, InvoiceData } from '@/types/invoice';
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -73,10 +73,8 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   const [discountAmount, setDiscountAmount] = useState(defaultData?.discountAmount ?? 0);
   const [discountNote, setDiscountNote] = useState(defaultData?.discountNote ?? '');
   const [taxRate, setTaxRate] = useState(defaultData?.taxRate ?? 0);
-  const [advancePaid, setAdvancePaid] = useState(defaultData?.advancePaid ?? 0);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>(defaultData?.paymentMethod ?? '');
-  const [upiId, setUpiId] = useState(defaultData?.upiId ?? 'shanthishanthi2772@okaxis');
-  const [bankDetails, setBankDetails] = useState(
+  const [upiId] = useState(defaultData?.upiId ?? 'shanthishanthi2772@okaxis');
+  const [bankDetails] = useState(
     defaultData?.bankDetails ?? 'State Bank of India\nA/C: XXXXXXXXXXXXX\nIFSC: SBIN0XXXXXX'
   );
   const [notes, setNotes] = useState(defaultData?.notes ?? '');
@@ -90,7 +88,6 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   const totalDiscount = discountAmount + lineItems.filter((i) => i.category === 'discount').reduce((s, i) => s + i.total, 0);
   const taxAmount = ((subtotal - totalDiscount + deliveryCharge) * taxRate) / 100;
   const total = subtotal - totalDiscount + deliveryCharge + taxAmount;
-  const balanceDue = total - advancePaid;
 
   /* ── line item helpers ── */
   const updateItem = useCallback((id: string, field: keyof InvoiceLineItem, value: string | number) => {
@@ -126,8 +123,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
     eventType, eventDate, eventLocation, guestCount, foodType,
     lineItems,
     subtotal, deliveryCharge, discountAmount, discountNote, taxRate, taxAmount,
-    total, advancePaid, balanceDue,
-    paymentMethod: paymentMethod || undefined,
+    total,
     upiId, bankDetails, notes, terms,
   });
 
@@ -142,8 +138,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
         subtotal, tax_amount: taxAmount, delivery_charge: deliveryCharge,
         discount_amount: totalDiscount, total_amount: total,
         invoice_data: buildInvoiceData(),
-        status: 'pending',
-        payment_method: paymentMethod || null,
+        status: savedInvoiceId ? undefined : 'DRAFT', // keep existing status on update
         notes,
         ...(savedInvoiceId ? { id: savedInvoiceId } : {}),
       };
@@ -214,10 +209,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       taxRate > 0 ? `Tax (${taxRate}%): ${fmt(taxAmount)}` : '',
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `*TOTAL: ${fmt(total)}*`,
-      advancePaid > 0 ? `Advance Paid: ${fmt(advancePaid)}` : '',
-      balanceDue > 0 ? `*Balance Due: ${fmt(balanceDue)}*` : `✅ *Fully Paid*`,
-      '',
-      paymentMethod === 'upi' ? `💳 Pay via UPI: *${upiId}*` : '',
+      `💳 Pay via UPI: *${upiId}*`,
       notes ? `\n📝 ${notes}` : '',
       '',
       `Thank you for choosing Shri Ganapathi Mess! 🙏`,
@@ -431,34 +423,10 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
             <label className={labelClass}>Tax Rate (%)</label>
             <input type="number" min="0" max="28" step="0.5" className={inputClass} value={taxRate} onChange={(e) => setTaxRate(Number(e.target.value))} placeholder="0 (food usually tax-free)" />
           </div>
-          <div>
-            <label className={labelClass}>Advance Received (₹)</label>
-            <input type="number" min="0" className={inputClass} value={advancePaid} onChange={(e) => setAdvancePaid(Number(e.target.value))} />
-          </div>
-          <div>
-            <label className={labelClass}>Payment Method</label>
-            <select className={inputClass} value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
-              <option value="">— Select —</option>
-              <option value="cash">💵 Cash</option>
-              <option value="upi">📱 UPI / GPay / PhonePe</option>
-              <option value="bank_transfer">🏦 Bank Transfer</option>
-              <option value="cheque">📝 Cheque</option>
-            </select>
-          </div>
         </div>
-
-        {paymentMethod === 'upi' && (
-          <div className="mt-4">
-            <label className={labelClass}>UPI ID</label>
-            <input className={`${inputClass} max-w-xs`} value={upiId} onChange={(e) => setUpiId(e.target.value)} />
-          </div>
-        )}
-        {paymentMethod === 'bank_transfer' && (
-          <div className="mt-4">
-            <label className={labelClass}>Bank Details</label>
-            <textarea rows={3} className={inputClass} value={bankDetails} onChange={(e) => setBankDetails(e.target.value)} />
-          </div>
-        )}
+        <p className="mt-3 font-body text-xs text-[var(--color-brown-400)]">
+          💡 Payments (advance, partial, final) are recorded separately after saving the invoice.
+        </p>
       </section>
 
       {/* ── Totals Summary ── */}
@@ -488,21 +456,12 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
             </div>
           )}
           <div className="flex justify-between text-lg font-bold border-t border-white/20 pt-2 mt-2">
-            <span>Total</span>
+            <span>Invoice Total</span>
             <span className="text-[var(--color-gold-300)]">{fmt(total)}</span>
           </div>
-          {advancePaid > 0 && (
-            <>
-              <div className="flex justify-between text-white/70">
-                <span>Advance Paid</span>
-                <span>−{fmt(advancePaid)}</span>
-              </div>
-              <div className={`flex justify-between font-bold text-base ${balanceDue <= 0 ? 'text-green-300' : 'text-orange-300'}`}>
-                <span>Balance Due</span>
-                <span>{balanceDue <= 0 ? '✅ Paid' : fmt(balanceDue)}</span>
-              </div>
-            </>
-          )}
+          <p className="text-white/50 text-xs pt-1">
+            Payments are recorded separately after saving.
+          </p>
         </div>
       </section>
 
@@ -544,8 +503,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
           <div className="flex-1 min-w-0">
             {savedInvoiceNumber && (
               <p className="font-body text-sm font-semibold text-[var(--color-green-800)]">
-                📋 {savedInvoiceNumber}
-                {balanceDue > 0 && <span className="ml-2 text-orange-600">Balance: {fmt(balanceDue)}</span>}
+                📋 {savedInvoiceNumber} — Total: {fmt(total)}
               </p>
             )}
           </div>
