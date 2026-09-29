@@ -16,15 +16,17 @@ import {
   LogOut,
   ChefHat,
   Bell,
+  Receipt,
 } from 'lucide-react';
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/enquiries', label: 'Enquiries', icon: ClipboardList },
-  { href: '/admin/customers', label: 'Customers', icon: Users },
-  { href: '/admin/reports', label: 'Analytics', icon: BarChart3 },
-  { href: '/admin/reviews', label: 'Reviews', icon: Star },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/enquiries',  label: 'Enquiries',  icon: ClipboardList },
+  { href: '/admin/invoices',   label: 'Invoices',   icon: Receipt },
+  { href: '/admin/customers',  label: 'Customers',  icon: Users },
+  { href: '/admin/reports',    label: 'Analytics',  icon: BarChart3 },
+  { href: '/admin/reviews',    label: 'Reviews',    icon: Star },
+  { href: '/admin/settings',   label: 'Settings',   icon: Settings },
 ];
 
 export default function AdminSidebar() {

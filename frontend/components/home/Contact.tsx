@@ -55,10 +55,11 @@ export default function Contact() {
     }
   }, [formData]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // 1️⃣ Build WhatsApp message (always happens, even if DB save fails)
     const message = generateWhatsAppMessage({
       name: formData.name,
       phone: formData.phone,
@@ -70,16 +71,33 @@ export default function Contact() {
       customItems: formData.customItems,
       message: formData.message,
     });
-
     const whatsappUrl = buildWhatsAppUrl(message);
 
-    // B11: Clear saved form after submission
-    localStorage.removeItem(FORM_STORAGE_KEY);
-    setFormData(defaultForm);
+    // 2️⃣ Save to Supabase in the background (fire-and-forget)
+    // If this fails the WhatsApp flow is NOT blocked — customer experience is protected
+    fetch('/api/enquiries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: formData.name,
+        phone: formData.phone,
+        event: formData.event,
+        guests: formData.guests,
+        eventDate: formData.eventDate,
+        eventLocation: formData.eventLocation,
+        foodType: formData.foodType,
+        customItems: formData.customItems,
+        message: formData.message,
+      }),
+    }).catch((err) => {
+      // Silently log — never surface errors to the customer
+      console.error('[Contact] enquiry save failed:', err);
+    });
 
+    // 3️⃣ Open WhatsApp immediately (don't wait for DB)
     window.open(whatsappUrl, '_blank');
 
-    // Clear form + show success popup
+    // 4️⃣ Clear form + show success popup
     localStorage.removeItem(FORM_STORAGE_KEY);
     setFormData(defaultForm);
     setIsSubmitting(false);

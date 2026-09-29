@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Phone, MessageCircle, Calendar, MapPin, Users } from 'lucide-react';
+import { ArrowLeft, Phone, MessageCircle, Calendar, MapPin, Users, FileText } from 'lucide-react';
 import StatusUpdater from '@/components/admin/StatusUpdater';
 import ActivityTimeline from '@/components/admin/ActivityTimeline';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
@@ -134,6 +134,12 @@ export default async function EnquiryDetailPage({
               >
                 <MessageCircle size={16} /> WhatsApp
               </a>
+              <Link
+                href={`/admin/enquiries/${enq.id}/invoice`}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-body text-sm font-semibold text-white bg-[var(--color-gold-600)] hover:bg-[var(--color-gold-700)] transition-colors"
+              >
+                <FileText size={16} /> Create Invoice
+              </Link>
             </div>
           </div>
         </div>
