@@ -88,27 +88,27 @@ async function ReportsContent() {
         <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-6">
           Financial Summary
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
           {[
             { label: 'Total Invoiced',   val: fmt(totalInvoiced),   cls: 'text-[var(--color-brown-900)]' },
             { label: 'Amount Received',  val: fmt(totalReceived),   cls: 'text-green-700' },
             { label: 'Outstanding',      val: fmt(totalOutstanding), cls: totalOutstanding > 0 ? 'text-orange-700 font-bold' : 'text-green-700' },
           ].map(({ label, val, cls }) => (
-            <div key={label} className="rounded-lg border border-[var(--color-ivory-300)] p-4 text-center">
-              <p className={`font-display text-2xl font-bold mb-1 ${cls}`}>{val}</p>
+            <div key={label} className="rounded-lg border border-[var(--color-ivory-300)] p-3 sm:p-4 text-center">
+              <p className={`font-display text-xl sm:text-2xl font-bold mb-1 ${cls}`}>{val}</p>
               <p className="font-body text-xs text-[var(--color-brown-500)]">{label}</p>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
             { label: 'Paid',          count: paidCount,    cls: 'text-green-700 bg-green-50 border-green-200' },
             { label: 'Partially Paid', count: partialCount, cls: 'text-orange-700 bg-orange-50 border-orange-200' },
             { label: 'Unpaid',        count: unpaidCount,  cls: 'text-red-700 bg-red-50 border-red-200' },
           ].map(({ label, count, cls }) => (
-            <div key={label} className={`rounded-lg border px-4 py-3 text-center ${cls}`}>
-              <p className="font-display text-2xl font-bold">{count}</p>
-              <p className="font-body text-xs font-semibold">{label}</p>
+            <div key={label} className={`rounded-lg border px-2 sm:px-4 py-2 sm:py-3 text-center ${cls}`}>
+              <p className="font-display text-xl sm:text-2xl font-bold">{count}</p>
+              <p className="font-body text-[10px] sm:text-xs font-semibold">{label}</p>
             </div>
           ))}
         </div>
@@ -152,11 +152,11 @@ async function ReportsContent() {
         <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-6">
           Invoice Status Breakdown
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
           {INVOICE_STATUSES.map((s) => (
-            <div key={s} className={`rounded-lg border px-4 py-4 text-center ${INVOICE_STATUS_COLORS[s]}`}>
-              <p className="font-display text-3xl font-bold mb-1">{invoicesByStatus[s] ?? 0}</p>
-              <p className="font-body text-xs font-semibold">{INVOICE_STATUS_LABELS[s]}</p>
+            <div key={s} className={`rounded-lg border px-3 sm:px-4 py-3 sm:py-4 text-center ${INVOICE_STATUS_COLORS[s]}`}>
+              <p className="font-display text-2xl sm:text-3xl font-bold mb-1">{invoicesByStatus[s] ?? 0}</p>
+              <p className="font-body text-[10px] sm:text-xs font-semibold">{INVOICE_STATUS_LABELS[s]}</p>
             </div>
           ))}
         </div>
@@ -167,19 +167,19 @@ async function ReportsContent() {
         <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-6">
           Enquiry Status Breakdown
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4">
           {ENQUIRY_STATUSES.map((status) => (
             <div
               key={status}
-              className="rounded-lg border border-[var(--color-ivory-300)] p-4 text-center"
+              className="rounded-lg border border-[var(--color-ivory-300)] p-3 sm:p-4 text-center"
             >
               <p
-                className="font-display text-3xl font-bold mb-1"
+                className="font-display text-2xl sm:text-3xl font-bold mb-1"
                 style={{ color: reportColors[status] || '#6B5744' }}
               >
                 {statusCounts[status] ?? 0}
               </p>
-              <p className="font-body text-sm text-[var(--color-brown-500)] capitalize">{ENQUIRY_STATUS_LABELS[status]}</p>
+              <p className="font-body text-xs sm:text-sm text-[var(--color-brown-500)] capitalize">{ENQUIRY_STATUS_LABELS[status]}</p>
             </div>
           ))}
         </div>

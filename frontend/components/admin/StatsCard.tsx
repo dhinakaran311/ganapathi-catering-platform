@@ -53,18 +53,18 @@ export default function StatsCard({
   return (
     <div
       id={id}
-      className={`bg-white rounded-xl border border-[var(--color-ivory-300)] border-t-2 ${accent.border} p-6 shadow-sm hover:shadow-md transition-shadow`}
+      className={`bg-white rounded-xl border border-[var(--color-ivory-300)] border-t-2 ${accent.border} p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow`}
     >
-      <div className="flex items-center justify-between mb-4">
-        <p className="font-body text-sm font-semibold text-[var(--color-brown-500)] uppercase tracking-wide">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <p className="font-body text-xs sm:text-sm font-semibold text-[var(--color-brown-500)] uppercase tracking-wide">
           {label}
         </p>
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${accent.bg} ${accent.text}`}>
+        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center ${accent.bg} ${accent.text}`}>
           {icon}
         </div>
       </div>
 
-      <p className="font-display text-3xl font-bold text-[var(--color-brown-900)] mb-2">
+      <p className="font-display text-2xl sm:text-3xl font-bold text-[var(--color-brown-900)] mb-2">
         {value}
       </p>
 

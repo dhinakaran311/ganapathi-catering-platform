@@ -5,8 +5,10 @@ const withNextIntl = createNextIntlPlugin();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
    allowedDevOrigins: [
-    'https://silk-identity-basket-refinance.trycloudflare.com',
-    'silk-identity-basket-refinance.trycloudflare.com',
+    'https://bearing-attachment-rewards-system.trycloudflare.com',
+    'bearing-attachment-rewards-system.trycloudflare.com',
+     "https://decent-lots-elliott-clip.trycloudflare.com",
+     "decent-lots-elliott-clip.trycloudflare.com"
   ],
 };
 

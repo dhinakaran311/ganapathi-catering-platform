@@ -1,9 +1,11 @@
 'use client';
 
-// components/admin/Sidebar.tsx — E36: Admin sidebar navigation
+// components/admin/Sidebar.tsx — E36: Admin sidebar navigation (Mobile Responsive)
 // Design: Deep green (#0D2611) background, gold accent, Playfair Display headings
 // Matches existing brand tokens from globals.css
+// Mobile: Slide-in sidebar with backdrop overlay
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -17,6 +19,7 @@ import {
   ChefHat,
   Bell,
   Receipt,
+  X,
 } from 'lucide-react';
 
 const navItems = [
@@ -29,27 +32,81 @@ const navItems = [
   { href: '/admin/settings',   label: 'Settings',   icon: Settings },
 ];
 
+// Custom event for mobile menu control
+const MOBILE_MENU_EVENT = 'toggleMobileMenu';
+
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Listen for mobile menu toggle events
+  useEffect(() => {
+    const handleToggle = () => setIsMobileMenuOpen((prev) => !prev);
+    window.addEventListener(MOBILE_MENU_EVENT, handleToggle);
+    return () => window.removeEventListener(MOBILE_MENU_EVENT, handleToggle);
+  }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Close mobile menu on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isMobileMenuOpen]);
 
   return (
-    <aside
-      id="admin-sidebar"
-      className="fixed inset-y-0 left-0 z-50 w-64 flex flex-col"
-      style={{ backgroundColor: 'var(--color-green-900)' }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+    <>
+      {/* Backdrop overlay - Mobile only */}
+      {isMobileMenuOpen && (
         <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: 'var(--color-gold-600)' }}
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        id="admin-sidebar"
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          lg:translate-x-0
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+        style={{ backgroundColor: 'var(--color-green-900)' }}
+      >
+      {/* Logo + Close button (mobile) */}
+      <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'var(--color-gold-600)' }}
+          >
+            <ChefHat size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="font-display text-sm font-bold text-white leading-tight">Shri Ganapathi</p>
+            <p className="font-body text-xs text-white/50 leading-tight">Admin Panel</p>
+          </div>
+        </div>
+
+        {/* Close button - Mobile only */}
+        <button
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="lg:hidden p-2 rounded-lg hover:bg-white/10 transition-colors"
+          aria-label="Close menu"
         >
-          <ChefHat size={20} className="text-white" />
-        </div>
-        <div>
-          <p className="font-display text-sm font-bold text-white leading-tight">Shri Ganapathi</p>
-          <p className="font-body text-xs text-white/50 leading-tight">Admin Panel</p>
-        </div>
+          <X size={20} className="text-white/70" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -95,6 +152,7 @@ export default function AdminSidebar() {
           </button>
         </form>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

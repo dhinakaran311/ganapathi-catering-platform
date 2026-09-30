@@ -33,7 +33,7 @@ async function DashboardContent() {
   return (
     <>
       {/* Stats Grid — Row 1: Enquiry stats */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4">
         <StatsCard
           id="stat-total-enquiries"
           label="Total Enquiries"
@@ -69,7 +69,7 @@ async function DashboardContent() {
       </div>
 
       {/* Stats Grid — Row 2: Financial stats (from verified payments) */}
-      <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
         <StatsCard
           id="stat-total-invoiced"
           label="Total Invoiced"
@@ -104,8 +104,8 @@ async function DashboardContent() {
         </span>
       </div>
 
-      {/* Recent Enquiries Table */}
-      <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm overflow-hidden">
+      {/* Recent Enquiries - Desktop: Table view */}
+      <div className="hidden md:block bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-ivory-300)]">
           <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)]">
             Recent Enquiries
@@ -195,6 +195,76 @@ async function DashboardContent() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Recent Enquiries - Mobile: Simplified card list */}
+      <div className="md:hidden bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-ivory-300)]">
+          <h2 className="font-display text-base font-bold text-[var(--color-brown-900)]">
+            Recent Enquiries
+          </h2>
+          <Link
+            href="/admin/enquiries"
+            className="flex items-center gap-1 font-body text-xs font-medium text-[var(--color-green-700)] hover:text-[var(--color-green-900)] transition-colors"
+          >
+            View all <ArrowRight size={12} />
+          </Link>
+        </div>
+
+        <div className="divide-y divide-[var(--color-ivory-200)]">
+          {recentEnquiries.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <ClipboardList size={32} className="text-[var(--color-ivory-400)] mx-auto mb-2" />
+              <p className="font-display text-sm font-bold text-[var(--color-brown-600)] mb-1">
+                No enquiries yet
+              </p>
+              <p className="font-body text-xs text-[var(--color-brown-400)]">
+                Contact form submissions will appear here
+              </p>
+            </div>
+          ) : (
+            recentEnquiries.map((enq) => {
+              const statusColor = ENQUIRY_STATUS_COLORS[enq.status as EnquiryStatus] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+              const statusLabel = ENQUIRY_STATUS_LABELS[enq.status as EnquiryStatus] ?? enq.status;
+              return (
+                <Link
+                  key={enq.id}
+                  href={`/admin/enquiries/${enq.id}`}
+                  className="block px-4 py-3 hover:bg-[var(--color-ivory-100)] transition-colors active:bg-[var(--color-ivory-200)]"
+                >
+                  <div className="flex items-start justify-between mb-1.5">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-body text-sm font-semibold text-[var(--color-brown-900)] block truncate">
+                        {enq.name}
+                      </span>
+                      <span className="font-body text-xs text-[var(--color-brown-500)]">
+                        {enq.event_type || 'Event'}
+                      </span>
+                    </div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-body text-xs font-semibold border ml-2 flex-shrink-0 ${statusColor}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-[var(--color-brown-500)]">
+                    <span>{enq.guest_count || '—'} guests</span>
+                    <span>•</span>
+                    <span>
+                      {enq.event_date
+                        ? new Date(enq.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+                        : '—'}
+                    </span>
+                    {SOURCE_BADGE[enq.source] && (
+                      <>
+                        <span>•</span>
+                        <span>{SOURCE_BADGE[enq.source]}</span>
+                      </>
+                    )}
+                  </div>
+                </Link>
+              );
+            })
+          )}
         </div>
       </div>
     </>
