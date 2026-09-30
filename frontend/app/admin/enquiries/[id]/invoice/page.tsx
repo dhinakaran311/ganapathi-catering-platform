@@ -95,7 +95,7 @@ export default async function EnquiryInvoicePage({
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col gap-4 mb-6 md:mb-8">
         <div>
           <Link
             href={`/admin/enquiries/${id}`}
@@ -103,27 +103,32 @@ export default async function EnquiryInvoicePage({
           >
             <ArrowLeft size={14} /> Back to Enquiry
           </Link>
-          <h1 className="font-display text-2xl font-bold text-[var(--color-brown-900)] flex items-center gap-2">
-            <FileText size={24} className="text-[var(--color-gold-600)]" />
-            {existingInvoice ? `Edit Invoice — ${existingInvoice.invoice_number}` : 'Create Invoice'}
-          </h1>
-          <p className="font-body text-sm text-[var(--color-brown-500)] mt-0.5">
-            For enquiry from <span className="font-semibold text-[var(--color-brown-800)]">{enq.name}</span>
-            {enq.event_type && ` · ${enq.event_type}`}
-            {enq.event_date && ` · ${new Date(enq.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
-          </p>
-        </div>
-
-        {existingInvoice && (() => {
-          const s = (existingInvoice.status as import('@/types/invoice').InvoiceStatus) ?? 'DRAFT';
-          const colors = { DRAFT: 'bg-gray-100 text-gray-600', SENT: 'bg-blue-100 text-blue-700', PARTIALLY_PAID: 'bg-orange-100 text-orange-700', PAID: 'bg-green-100 text-green-700', CANCELLED: 'bg-red-100 text-red-700' };
-          const labels = { DRAFT: 'Draft', SENT: 'Sent', PARTIALLY_PAID: 'Partially Paid', PAID: 'Paid', CANCELLED: 'Cancelled' };
-          return (
-            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full font-body text-xs font-bold uppercase tracking-wide ${colors[s] ?? 'bg-gray-100 text-gray-600'}`}>
-              {labels[s] ?? s}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-xl md:text-2xl font-bold text-[var(--color-brown-900)] flex items-center gap-2 mb-1">
+                <FileText size={24} className="text-[var(--color-gold-600)] flex-shrink-0" />
+                <span className="truncate">
+                  {existingInvoice ? `Edit Invoice — ${existingInvoice.invoice_number}` : 'Create Invoice'}
+                </span>
+              </h1>
+              <p className="font-body text-xs md:text-sm text-[var(--color-brown-500)]">
+                For enquiry from <span className="font-semibold text-[var(--color-brown-800)]">{enq.name}</span>
+                {enq.event_type && ` · ${enq.event_type}`}
+                {enq.event_date && ` · ${new Date(enq.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+              </p>
             </div>
-          );
-        })()}
+            {existingInvoice && (() => {
+              const s = (existingInvoice.status as import('@/types/invoice').InvoiceStatus) ?? 'DRAFT';
+              const colors = { DRAFT: 'bg-gray-100 text-gray-600', SENT: 'bg-blue-100 text-blue-700', PARTIALLY_PAID: 'bg-orange-100 text-orange-700', PAID: 'bg-green-100 text-green-700', CANCELLED: 'bg-red-100 text-red-700' };
+              const labels = { DRAFT: 'Draft', SENT: 'Sent', PARTIALLY_PAID: 'Partially Paid', PAID: 'Paid', CANCELLED: 'Cancelled' };
+              return (
+                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-full font-body text-xs font-bold uppercase tracking-wide whitespace-nowrap ${colors[s] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {labels[s] ?? s}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
       </div>
 
       {/* Invoice Builder (always shown) */}

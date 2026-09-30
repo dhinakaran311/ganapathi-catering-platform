@@ -46,7 +46,7 @@ export default function StatusUpdater({ enquiryId, currentStatus }: StatusUpdate
             id={`status-btn-${s}`}
             disabled={loading}
             onClick={() => handleChange(s)}
-            className={`px-3 py-1.5 rounded-full font-body text-xs font-semibold border transition-all ${
+            className={`px-4 py-2.5 rounded-full font-body text-xs font-semibold border transition-all min-h-[44px] ${
               status === s
                 ? ENQUIRY_STATUS_COLORS[s] + ' ring-2 ring-offset-1 ring-current'
                 : 'bg-white text-[var(--color-brown-500)] border-[var(--color-ivory-300)] hover:bg-[var(--color-ivory-100)]'

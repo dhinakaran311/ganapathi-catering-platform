@@ -238,11 +238,11 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       )}
 
       {/* ── Customer & Event Info ── */}
-      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
+      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-4 sm:p-6">
         <h3 className="font-display text-base font-bold text-[var(--color-brown-900)] mb-4">
           Customer & Event Details
         </h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className={labelClass}>Customer Name *</label>
             <input className={inputClass} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="e.g. Murugan K." />
@@ -289,7 +289,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       </section>
 
       {/* ── Preset Quick-Add ── */}
-      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
+      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-4 sm:p-6">
         <h3 className="font-display text-base font-bold text-[var(--color-brown-900)] mb-3">
           Quick Add Items
         </h3>
@@ -299,7 +299,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
               key={p.description}
               type="button"
               onClick={() => addPreset(p)}
-              className="px-3 py-1.5 rounded-full border border-[var(--color-ivory-300)] bg-[var(--color-ivory-100)] font-body text-xs font-medium text-[var(--color-brown-700)] hover:bg-[var(--color-green-100)] hover:border-[var(--color-green-700)] hover:text-[var(--color-green-900)] transition-all"
+              className="px-3 py-2.5 rounded-full border border-[var(--color-ivory-300)] bg-[var(--color-ivory-100)] font-body text-xs font-medium text-[var(--color-brown-700)] hover:bg-[var(--color-green-100)] hover:border-[var(--color-green-700)] hover:text-[var(--color-green-900)] transition-all min-h-[44px] flex items-center"
             >
               + {p.description}
             </button>
@@ -308,21 +308,22 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       </section>
 
       {/* ── Line Items ── */}
-      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
+      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h3 className="font-display text-base font-bold text-[var(--color-brown-900)]">
             Line Items
           </h3>
           <button
             type="button"
             onClick={addItem}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-green-800)] text-white font-body text-sm font-semibold hover:bg-[var(--color-green-900)] transition-colors"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg bg-[var(--color-green-800)] text-white font-body text-sm font-semibold hover:bg-[var(--color-green-900)] transition-colors min-h-[44px]"
           >
             <Plus size={16} /> Add Row
           </button>
         </div>
 
-        <div className="overflow-x-auto -mx-2">
+        {/* Desktop: Table view */}
+        <div className="hidden lg:block overflow-x-auto -mx-2">
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[var(--color-ivory-300)]">
@@ -399,14 +400,128 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
             </tbody>
           </table>
         </div>
+
+        {/* Mobile: Card view */}
+        <div className="lg:hidden space-y-3">
+          {lineItems.map((item, index) => (
+            <div key={item.id} className="bg-[var(--color-ivory-50)] rounded-lg p-4 border border-[var(--color-ivory-300)] space-y-3">
+              {/* Header: Item number + Actions */}
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-body text-xs font-semibold text-[var(--color-brown-500)] uppercase">
+                  Item #{index + 1}
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => duplicateItem(item.id)} 
+                    className="p-2 rounded-lg text-[var(--color-brown-400)] hover:text-[var(--color-green-800)] hover:bg-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Duplicate item"
+                  >
+                    <Copy size={18} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => removeItem(item.id)} 
+                    className="p-2 rounded-lg text-[var(--color-brown-400)] hover:text-red-600 hover:bg-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Remove item"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block font-body text-xs font-semibold text-[var(--color-brown-600)] mb-1.5 uppercase tracking-wide">
+                  Category
+                </label>
+                <select
+                  value={item.category}
+                  onChange={(e) => updateItem(item.id, 'category', e.target.value as InvoiceLineItem['category'])}
+                  className="w-full px-3 py-2.5 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent min-h-[44px]"
+                >
+                  {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block font-body text-xs font-semibold text-[var(--color-brown-600)] mb-1.5 uppercase tracking-wide">
+                  Description
+                </label>
+                <input
+                  value={item.description}
+                  onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                  placeholder="Item description"
+                  className="w-full px-3 py-2.5 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent min-h-[44px]"
+                />
+              </div>
+
+              {/* Qty + Unit */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-body text-xs font-semibold text-[var(--color-brown-600)] mb-1.5 uppercase tracking-wide">
+                    Quantity
+                  </label>
+                  <input
+                    type="number" 
+                    min="1"
+                    value={item.qty}
+                    onChange={(e) => updateItem(item.id, 'qty', Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent min-h-[44px]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-body text-xs font-semibold text-[var(--color-brown-600)] mb-1.5 uppercase tracking-wide">
+                    Unit
+                  </label>
+                  <input
+                    value={item.unit}
+                    onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
+                    placeholder="person"
+                    className="w-full px-3 py-2.5 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent min-h-[44px]"
+                  />
+                </div>
+              </div>
+
+              {/* Price + Total */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-body text-xs font-semibold text-[var(--color-brown-600)] mb-1.5 uppercase tracking-wide">
+                    Price (₹)
+                  </label>
+                  <input
+                    type="number" 
+                    min="0"
+                    value={item.unitPrice}
+                    onChange={(e) => updateItem(item.id, 'unitPrice', Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent min-h-[44px]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-body text-xs font-semibold text-[var(--color-brown-600)] mb-1.5 uppercase tracking-wide">
+                    Total
+                  </label>
+                  <div className="flex items-center h-[44px] px-3 py-2.5 rounded-lg bg-[var(--color-green-50)] border border-[var(--color-green-200)]">
+                    <span className="font-body text-sm font-bold text-[var(--color-green-900)]">
+                      {fmt(item.total)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ── Charges, Discounts, Taxes ── */}
-      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
+      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-4 sm:p-6">
         <h3 className="font-display text-base font-bold text-[var(--color-brown-900)] mb-4">
           Adjustments
         </h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label className={labelClass}>Delivery Charge (₹)</label>
             <input type="number" min="0" className={inputClass} value={deliveryCharge} onChange={(e) => setDeliveryCharge(Number(e.target.value))} />
@@ -430,9 +545,9 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       </section>
 
       {/* ── Totals Summary ── */}
-      <section className="bg-[var(--color-green-900)] text-white rounded-xl shadow-sm p-6">
+      <section className="bg-[var(--color-green-900)] text-white rounded-xl shadow-sm p-4 sm:p-6">
         <h3 className="font-display text-base font-bold mb-4">Invoice Summary</h3>
-        <div className="space-y-2 font-body text-sm max-w-xs ml-auto">
+        <div className="space-y-2 font-body text-sm w-full sm:max-w-xs sm:ml-auto">
           <div className="flex justify-between">
             <span className="text-white/70">Sub Total</span>
             <span>{fmt(subtotal)}</span>
@@ -466,9 +581,9 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       </section>
 
       {/* ── Notes & Terms ── */}
-      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
+      <section className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-4 sm:p-6">
         <h3 className="font-display text-base font-bold text-[var(--color-brown-900)] mb-4">Notes & Terms</h3>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <div>
             <label className={labelClass}>Internal / Customer Notes</label>
             <textarea rows={3} className={inputClass} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Any special notes for this invoice..." />
@@ -482,16 +597,20 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
 
       {/* ── WhatsApp Preview ── */}
       {showPreview && (
-        <section className="bg-[#ECE5DD] rounded-xl border border-[#d4c9b0] p-6">
+        <section className="bg-[#ECE5DD] rounded-xl border border-[#d4c9b0] p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display text-base font-bold text-[var(--color-brown-900)]">
               📱 WhatsApp Message Preview
             </h3>
-            <button onClick={() => setShowPreview(false)} className="text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] transition-colors">
+            <button 
+              onClick={() => setShowPreview(false)} 
+              className="text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Hide preview"
+            >
               <ChevronUp size={18} />
             </button>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm font-mono text-xs text-[var(--color-brown-900)] whitespace-pre-wrap leading-relaxed">
+          <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm font-mono text-xs sm:text-sm text-[var(--color-brown-900)] whitespace-pre-wrap leading-relaxed break-words">
             {buildWhatsAppText()}
           </div>
         </section>
@@ -499,44 +618,50 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
 
       {/* ── Action Bar ── */}
       <div className="sticky bottom-4 z-20">
-        <div className="bg-white border border-[var(--color-ivory-300)] rounded-2xl shadow-xl p-4 flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-0">
-            {savedInvoiceNumber && (
-              <p className="font-body text-sm font-semibold text-[var(--color-green-800)]">
+        <div className="bg-white border border-[var(--color-ivory-300)] rounded-2xl shadow-xl p-3 sm:p-4">
+          {/* Invoice info - stack on mobile */}
+          {savedInvoiceNumber && (
+            <div className="mb-3 pb-3 border-b border-[var(--color-ivory-200)] sm:border-0 sm:pb-0 sm:mb-0">
+              <p className="font-body text-xs sm:text-sm font-semibold text-[var(--color-green-800)]">
                 📋 {savedInvoiceNumber} — Total: {fmt(total)}
               </p>
-            )}
+            </div>
+          )}
+
+          {/* Buttons - stack on mobile, row on desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-2 sm:gap-3">
+            {!savedInvoiceNumber && <div className="hidden lg:block flex-1"></div>}
+            
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-[var(--color-brown-700)] border border-[var(--color-ivory-300)] hover:bg-[var(--color-ivory-100)] transition-colors min-h-[44px]"
+            >
+              <FileText size={16} />
+              {showPreview ? 'Hide' : 'Preview'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[var(--color-green-800)] hover:bg-[var(--color-green-900)] transition-colors disabled:opacity-50 min-h-[44px]"
+            >
+              <Save size={16} />
+              {saving ? 'Saving…' : savedInvoiceId ? 'Update Invoice' : 'Save Invoice'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleWhatsApp}
+              disabled={sending || !customerPhone}
+              title={!customerPhone ? 'Enter customer phone first' : 'Send invoice via WhatsApp'}
+              className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1da851] transition-colors disabled:opacity-50 min-h-[44px] sm:col-span-2 lg:col-span-1"
+            >
+              <MessageCircle size={16} />
+              {sending ? 'Sending…' : 'Send via WhatsApp'}
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowPreview((v) => !v)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-body text-sm font-semibold text-[var(--color-brown-700)] border border-[var(--color-ivory-300)] hover:bg-[var(--color-ivory-100)] transition-colors"
-          >
-            <FileText size={16} />
-            {showPreview ? 'Hide' : 'Preview'}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-body text-sm font-semibold text-white bg-[var(--color-green-800)] hover:bg-[var(--color-green-900)] transition-colors disabled:opacity-50"
-          >
-            <Save size={16} />
-            {saving ? 'Saving…' : savedInvoiceId ? 'Update Invoice' : 'Save Invoice'}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleWhatsApp}
-            disabled={sending || !customerPhone}
-            title={!customerPhone ? 'Enter customer phone first' : 'Send invoice via WhatsApp'}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-body text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1da851] transition-colors disabled:opacity-50"
-          >
-            <MessageCircle size={16} />
-            {sending ? 'Sending…' : 'Send via WhatsApp'}
-          </button>
         </div>
       </div>
     </div>
