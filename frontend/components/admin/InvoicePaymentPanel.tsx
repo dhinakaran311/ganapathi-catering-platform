@@ -52,24 +52,25 @@ export default function InvoicePaymentPanel({
   return (
     <div className="space-y-6">
       {/* Header row */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-xl font-bold text-[var(--color-brown-900)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="font-display text-lg sm:text-xl font-bold text-[var(--color-brown-900)]">
           Payments
         </h2>
         <div className="flex items-center gap-2">
           <button
             onClick={refresh}
             disabled={refreshing}
-            className="p-2 rounded-lg text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] hover:bg-[var(--color-ivory-100)] transition-colors disabled:opacity-50"
+            className="p-2.5 rounded-lg text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] hover:bg-[var(--color-ivory-100)] transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Refresh"
+            aria-label="Refresh payments"
           >
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-body text-sm font-semibold text-white bg-[var(--color-green-800)] hover:bg-[var(--color-green-900)] transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-body text-sm font-semibold text-white bg-[var(--color-green-800)] hover:bg-[var(--color-green-900)] transition-colors min-h-[44px] flex-1 sm:flex-initial"
           >
-            <Plus size={16} /> Record Payment
+            <Plus size={16} /> <span>Record Payment</span>
           </button>
         </div>
       </div>

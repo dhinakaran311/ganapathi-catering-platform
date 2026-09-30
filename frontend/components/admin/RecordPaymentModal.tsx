@@ -99,58 +99,59 @@ export default function RecordPaymentModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--color-ivory-300)]">
-          <div>
-            <h2 className="font-display text-xl font-bold text-[var(--color-brown-900)]">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-[var(--color-ivory-300)] sticky top-0 bg-white z-10">
+          <div className="flex-1 min-w-0 mr-2">
+            <h2 className="font-display text-lg sm:text-xl font-bold text-[var(--color-brown-900)] truncate">
               Record Payment
             </h2>
-            <p className="font-body text-sm text-[var(--color-brown-500)] mt-0.5">
+            <p className="font-body text-xs sm:text-sm text-[var(--color-brown-500)] mt-0.5 truncate">
               Invoice {invoiceNumber}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] hover:bg-[var(--color-ivory-100)] transition-colors"
+            className="p-2 rounded-lg text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] hover:bg-[var(--color-ivory-100)] transition-colors flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Close modal"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Financial summary strip */}
-        <div className="grid grid-cols-3 divide-x divide-[var(--color-ivory-300)] bg-[var(--color-ivory-100)]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:divide-x sm:divide-[var(--color-ivory-300)] bg-[var(--color-ivory-100)] p-4">
           {[
             { label: 'Invoice Total', val: totalAmount, cls: 'text-[var(--color-brown-900)]' },
             { label: 'Received',      val: alreadyReceived, cls: 'text-green-700' },
             { label: 'Balance Due',   val: balanceDue,  cls: balanceDue > 0 ? 'text-orange-600' : 'text-green-700' },
           ].map(({ label, val, cls }) => (
-            <div key={label} className="px-4 py-3 text-center">
-              <p className="font-body text-xs text-[var(--color-brown-500)] mb-0.5">{label}</p>
-              <p className={`font-display text-lg font-bold ${cls}`}>{fmt(val)}</p>
+            <div key={label} className="text-center sm:px-4 py-2">
+              <p className="font-body text-xs text-[var(--color-brown-500)] mb-1">{label}</p>
+              <p className={`font-display text-lg sm:text-xl font-bold ${cls}`}>{fmt(val)}</p>
             </div>
           ))}
         </div>
 
         {/* Overpayment confirmation */}
         {overpayWarning !== null && !confirmOverpay && (
-          <div className="mx-6 mt-4 rounded-xl bg-orange-50 border border-orange-200 p-4">
-            <div className="flex items-start gap-3">
+          <div className="mx-4 sm:mx-6 mt-4 rounded-xl bg-orange-50 border border-orange-200 p-3 sm:p-4">
+            <div className="flex items-start gap-2 sm:gap-3">
               <AlertTriangle className="text-orange-500 flex-shrink-0 mt-0.5" size={18} />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-body text-sm font-semibold text-orange-800">Overpayment Warning</p>
-                <p className="font-body text-sm text-orange-700 mt-1">
+                <p className="font-body text-xs sm:text-sm text-orange-700 mt-1">
                   Balance due is {fmt(balanceDue)}, but you entered {fmt(parsedAmount)}.
                   This will result in an overpayment of <strong>{fmt(overpayWarning)}</strong>.
                 </p>
-                <div className="flex gap-3 mt-3">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3">
                   <button
                     onClick={() => setOverpayWarning(null)}
-                    className="px-4 py-2 rounded-lg font-body text-sm font-semibold border border-orange-300 text-orange-700 hover:bg-orange-100 transition-colors"
+                    className="px-4 py-2.5 rounded-lg font-body text-sm font-semibold border border-orange-300 text-orange-700 hover:bg-orange-100 transition-colors min-h-[44px]"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => { setConfirmOverpay(true); setOverpayWarning(null); }}
-                    className="px-4 py-2 rounded-lg font-body text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+                    className="px-4 py-2.5 rounded-lg font-body text-sm font-semibold bg-orange-500 text-white hover:bg-orange-600 transition-colors min-h-[44px]"
                   >
                     Confirm Anyway
                   </button>
@@ -161,7 +162,7 @@ export default function RecordPaymentModal({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
 
           {/* Amount */}
           <div>
@@ -187,7 +188,7 @@ export default function RecordPaymentModal({
           </div>
 
           {/* Payment Type + Method */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Payment Type *</label>
               <select
@@ -217,7 +218,7 @@ export default function RecordPaymentModal({
           </div>
 
           {/* Reference + Date */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>
                 {paymentMethod === 'UPI' ? 'UPI / UTR Reference' :
@@ -265,18 +266,18 @@ export default function RecordPaymentModal({
           )}
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 rounded-xl font-body text-sm font-semibold border border-[var(--color-ivory-300)] text-[var(--color-brown-700)] hover:bg-[var(--color-ivory-100)] transition-colors"
+              className="flex-1 px-4 py-3 rounded-xl font-body text-sm font-semibold border border-[var(--color-ivory-300)] text-[var(--color-brown-700)] hover:bg-[var(--color-ivory-100)] transition-colors min-h-[44px]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-2.5 rounded-xl font-body text-sm font-semibold text-white bg-[var(--color-green-800)] hover:bg-[var(--color-green-900)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-3 rounded-xl font-body text-sm font-semibold text-white bg-[var(--color-green-800)] hover:bg-[var(--color-green-900)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-[44px]"
             >
               {saving ? 'Recording…' : 'Record Payment'}
             </button>

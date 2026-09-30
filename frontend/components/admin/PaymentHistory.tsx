@@ -70,25 +70,25 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
 
       {/* Payment Summary Banner */}
       <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-[var(--color-ivory-300)] flex items-center justify-between">
-          <h3 className="font-display text-base font-bold text-[var(--color-brown-900)]">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--color-ivory-300)] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 className="font-display text-base sm:text-lg font-bold text-[var(--color-brown-900)]">
             Payment Summary
           </h3>
-          <span className={`inline-flex items-center px-3 py-1 rounded-full font-body text-xs font-bold border ${psColor}`}>
+          <span className={`inline-flex items-center px-3 py-1.5 rounded-full font-body text-xs font-bold border self-start sm:self-auto ${psColor}`}>
             {psLabel}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-[var(--color-ivory-200)]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-0 sm:divide-x sm:divide-[var(--color-ivory-200)] p-3 sm:p-0">
           {[
             { label: 'Invoice Total',   val: summary.total_amount,   cls: 'text-[var(--color-brown-900)]' },
             { label: 'Amount Received', val: summary.amount_received, cls: 'text-green-700' },
             { label: 'Balance Due',     val: summary.balance_due,    cls: summary.balance_due > 0 ? 'text-orange-600 font-bold' : 'text-green-700' },
             { label: 'Overpaid',        val: summary.overpaid_amount, cls: summary.overpaid_amount > 0 ? 'text-purple-600' : 'text-[var(--color-brown-400)]' },
           ].map(({ label, val, cls }) => (
-            <div key={label} className="px-4 py-4 text-center">
+            <div key={label} className="bg-[var(--color-ivory-50)] sm:bg-transparent rounded-lg sm:rounded-none px-4 py-3 sm:py-4 text-center border sm:border-0 border-[var(--color-ivory-200)]">
               <p className="font-body text-xs text-[var(--color-brown-400)] mb-1">{label}</p>
-              <p className={`font-display text-xl font-bold ${cls}`}>{fmt(val)}</p>
+              <p className={`font-display text-xl sm:text-2xl font-bold ${cls}`}>{fmt(val)}</p>
             </div>
           ))}
         </div>
@@ -104,14 +104,14 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
 
       {/* Payment History List */}
       <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-[var(--color-ivory-300)]">
-          <h3 className="font-display text-base font-bold text-[var(--color-brown-900)]">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--color-ivory-300)]">
+          <h3 className="font-display text-base sm:text-lg font-bold text-[var(--color-brown-900)]">
             Payment History
           </h3>
         </div>
 
         {payments.length === 0 ? (
-          <div className="px-6 py-10 text-center">
+          <div className="px-4 sm:px-6 py-10 text-center">
             <IndianRupee size={32} className="mx-auto text-[var(--color-ivory-400)] mb-3" />
             <p className="font-body text-sm text-[var(--color-brown-400)]">
               No payments recorded yet.
@@ -124,37 +124,37 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
               const isExpanded  = actionId === p.id;
 
               return (
-                <div key={p.id} className="px-6 py-4">
-                  <div className="flex items-start justify-between gap-4">
+                <div key={p.id} className="px-4 sm:px-6 py-4">
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 lg:gap-4">
 
                     {/* Left: date + type + method */}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-display text-lg font-bold text-[var(--color-brown-900)]">
+                        <span className="font-display text-lg sm:text-xl font-bold text-[var(--color-brown-900)]">
                           {fmt(Number(p.amount))}
                         </span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-body text-xs font-semibold border ${statusColor}`}>
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full font-body text-xs font-semibold border ${statusColor}`}>
                           {PAYMENT_STATUS_LABELS[p.status]}
                         </span>
                         {p.is_legacy_migrated && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full font-body text-xs bg-purple-50 text-purple-600 border border-purple-200">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full font-body text-xs bg-purple-50 text-purple-600 border border-purple-200">
                             Legacy
                           </span>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 font-body text-sm text-[var(--color-brown-600)]">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-body text-sm text-[var(--color-brown-600)] mb-1">
                         <span>{PAYMENT_TYPE_LABELS[p.payment_type]}</span>
                         <span className="text-[var(--color-brown-300)]">·</span>
                         <span>{PAYMENT_METHOD_ICONS[p.payment_method]} {PAYMENT_METHOD_LABELS[p.payment_method]}</span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 mt-1.5 font-body text-xs text-[var(--color-brown-400)]">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 font-body text-xs text-[var(--color-brown-400)]">
                         <span className="flex items-center gap-1">
                           <Calendar size={11} /> {fmtDate(p.payment_date)}
                         </span>
                         {p.transaction_reference && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 truncate max-w-[200px]">
                             <Hash size={11} /> {p.transaction_reference}
                           </span>
                         )}
@@ -164,7 +164,7 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
                           </span>
                         )}
                         {p.rejected_at && (
-                          <span className="text-red-500">
+                          <span className="text-red-500 break-words">
                             Rejected {fmtDate(p.rejected_at)}
                             {p.rejection_reason && `: ${p.rejection_reason}`}
                           </span>
@@ -172,7 +172,7 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
                       </div>
 
                       {p.notes && (
-                        <p className="mt-1.5 font-body text-xs text-[var(--color-brown-500)] italic">
+                        <p className="mt-2 font-body text-xs text-[var(--color-brown-500)] italic break-words">
                           {p.notes}
                         </p>
                       )}
@@ -180,21 +180,21 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
 
                     {/* Right: verify / reject actions (only for PENDING) */}
                     {p.status === 'PENDING' && (
-                      <div className="flex-shrink-0 flex gap-2">
+                      <div className="flex-shrink-0 flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                         <button
                           onClick={() => handleAction(p.id, 'verify')}
                           disabled={!!loadingId}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-body text-xs font-semibold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition-colors disabled:opacity-50"
+                          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg font-body text-xs sm:text-sm font-semibold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition-colors disabled:opacity-50 min-h-[44px] flex-1 sm:flex-initial"
                         >
-                          <CheckCircle size={14} />
-                          {loadingId === p.id && actionType === 'verify' ? '…' : 'Verify'}
+                          <CheckCircle size={16} />
+                          {loadingId === p.id && actionType === 'verify' ? 'Verifying…' : 'Verify'}
                         </button>
                         <button
                           onClick={() => { setActionId(p.id); setActionType('reject'); }}
                           disabled={!!loadingId}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-body text-xs font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                          className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg font-body text-xs sm:text-sm font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50 min-h-[44px] flex-1 sm:flex-initial"
                         >
-                          <XCircle size={14} /> Reject
+                          <XCircle size={16} /> Reject
                         </button>
                       </div>
                     )}
@@ -202,8 +202,8 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
 
                   {/* Reject reason input (inline) */}
                   {isExpanded && actionType === 'reject' && (
-                    <div className="mt-4 pl-2 border-l-2 border-red-200">
-                      <label className="block font-body text-xs font-semibold text-red-700 mb-1.5 uppercase">
+                    <div className="mt-4 pl-0 sm:pl-2 border-l-0 sm:border-l-2 border-red-200">
+                      <label className="block font-body text-xs font-semibold text-red-700 mb-2 uppercase">
                         Rejection Reason
                       </label>
                       <input
@@ -211,19 +211,19 @@ export default function PaymentHistory({ payments, summary, onAction }: Props) {
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         placeholder="e.g. Incorrect transaction reference"
-                        className="w-full px-3 py-2 rounded-lg border border-red-200 bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-red-400"
+                        className="w-full px-3 py-2.5 rounded-lg border border-red-200 bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-red-400"
                       />
-                      <div className="flex gap-3 mt-3">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-3">
                         <button
                           onClick={() => { setActionId(null); setActionType(null); }}
-                          className="px-4 py-1.5 rounded-lg font-body text-xs font-semibold border border-[var(--color-ivory-300)] text-[var(--color-brown-600)] hover:bg-[var(--color-ivory-100)] transition-colors"
+                          className="px-4 py-2.5 rounded-lg font-body text-sm font-semibold border border-[var(--color-ivory-300)] text-[var(--color-brown-600)] hover:bg-[var(--color-ivory-100)] transition-colors min-h-[44px]"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleAction(p.id, 'reject')}
                           disabled={!!loadingId}
-                          className="px-4 py-1.5 rounded-lg font-body text-xs font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
+                          className="px-4 py-2.5 rounded-lg font-body text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50 min-h-[44px] flex-1 sm:flex-initial"
                         >
                           {loadingId === p.id ? 'Rejecting…' : 'Confirm Rejection'}
                         </button>
