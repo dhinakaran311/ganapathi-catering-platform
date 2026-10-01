@@ -76,6 +76,7 @@ export default async function CustomersPage({
                   </td>
                 </tr>
               ) : (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 customers.map((c: any) => (
                   <tr key={c.id} className="hover:bg-[var(--color-ivory-100)] transition-colors">
                     <td className="px-4 py-3 font-body text-sm font-semibold text-[var(--color-brown-900)]">
@@ -125,6 +126,7 @@ export default async function CustomersPage({
             </p>
           </div>
         ) : (
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           customers.map((c: any) => (
             <div
               key={c.id}

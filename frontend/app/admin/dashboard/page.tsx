@@ -3,9 +3,9 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ClipboardList, TrendingUp, Clock, ArrowRight, IndianRupee, Wifi, AlertCircle } from 'lucide-react';
+import { ClipboardList, TrendingUp, Clock, ArrowRight, IndianRupee, Wifi, AlertCircle, Bell } from 'lucide-react';
 import StatsCard from '@/components/admin/StatsCard';
-import { getDashboardStats, getRecentEnquiries } from '@/lib/analytics/queries';
+import { getDashboardStats, getRecentEnquiries, getFollowupSummary } from '@/lib/analytics/queries';
 import { StatsCardSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ENQUIRY_STATUS_COLORS, ENQUIRY_STATUS_LABELS, EnquiryStatus } from '@/types/enquiry';
 
@@ -20,9 +20,10 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
 async function DashboardContent() {
-  const [stats, recentEnquiries] = await Promise.all([
+  const [stats, recentEnquiries, followup] = await Promise.all([
     getDashboardStats(),
     getRecentEnquiries(10),
+    getFollowupSummary(),
   ]);
 
   const weeklyTrend =
@@ -95,6 +96,38 @@ async function DashboardContent() {
           accentColor="gold"
         />
       </div>
+
+      {/* Follow-up Widget */}
+      {(followup.overdue > 0 || followup.due_today > 0 || followup.upcoming > 0) && (
+        <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-4 md:p-6 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-[var(--color-brown-600)]" />
+              <h2 className="font-display text-base font-bold text-[var(--color-brown-900)]">Follow-ups</h2>
+            </div>
+            <Link
+              href="/admin/enquiries?overdue=1"
+              className="font-body text-xs font-medium text-[var(--color-green-700)] hover:text-[var(--color-green-900)]"
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Link href="/admin/enquiries?overdue=1" className="group rounded-xl border border-red-200 bg-red-50 p-3 text-center hover:bg-red-100 transition-colors">
+              <p className="font-display text-2xl font-bold text-red-600">{followup.overdue}</p>
+              <p className="font-body text-xs text-red-500 mt-0.5">Overdue</p>
+            </Link>
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-center">
+              <p className="font-display text-2xl font-bold text-orange-600">{followup.due_today}</p>
+              <p className="font-body text-xs text-orange-500 mt-0.5">Due Today</p>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-center">
+              <p className="font-display text-2xl font-bold text-blue-600">{followup.upcoming}</p>
+              <p className="font-body text-xs text-blue-500 mt-0.5">Upcoming</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live feed banner */}
       <div className="flex items-center gap-2 mb-4 px-1">

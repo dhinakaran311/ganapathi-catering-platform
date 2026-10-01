@@ -147,6 +147,7 @@ export default function AdminLoginPage() {
 
         {/* Back link */}
         <div className="text-center mt-6">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/en"
             className="font-body text-sm text-[var(--color-brown-500)] hover:text-[var(--color-brown-900)] transition-colors"

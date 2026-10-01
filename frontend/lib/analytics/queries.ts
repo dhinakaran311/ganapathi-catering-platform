@@ -129,3 +129,25 @@ export async function getEnquiriesByStatus(): Promise<Record<string, number>> {
   });
   return counts;
 }
+
+export interface FollowupSummary {
+  overdue: number;
+  due_today: number;
+  upcoming: number;
+}
+
+export async function getFollowupSummary(): Promise<FollowupSummary> {
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase
+    .from('followup_summary')
+    .select('overdue, due_today, upcoming')
+    .single();
+
+  if (error || !data) return { overdue: 0, due_today: 0, upcoming: 0 };
+
+  return {
+    overdue:   Number(data.overdue ?? 0),
+    due_today: Number(data.due_today ?? 0),
+    upcoming:  Number(data.upcoming ?? 0),
+  };
+}

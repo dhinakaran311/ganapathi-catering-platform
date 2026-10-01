@@ -12,7 +12,9 @@ export default async function ReviewsAdminPage() {
     .order('created_at', { ascending: false })
     .limit(50);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pending = (reviews ?? []).filter((r: any) => !r.is_approved);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const approved = (reviews ?? []).filter((r: any) => r.is_approved);
 
   return (
@@ -36,6 +38,7 @@ export default async function ReviewsAdminPage() {
             </span>
           </h2>
           <div className="space-y-4">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {(pending as any[]).map((r) => (
               <ReviewApprovalRow key={r.id} review={r} />
             ))}
@@ -52,6 +55,7 @@ export default async function ReviewsAdminPage() {
           <p className="font-body text-sm text-[var(--color-brown-400)]">No approved reviews yet.</p>
         ) : (
           <div className="space-y-4">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {(approved as any[]).map((r) => (
               <ReviewApprovalRow key={r.id} review={r} />
             ))}

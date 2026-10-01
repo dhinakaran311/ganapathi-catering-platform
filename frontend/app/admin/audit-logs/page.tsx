@@ -51,6 +51,7 @@ export default async function AuditLogsPage() {
                   </td>
                 </tr>
               ) : (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (logs as any[]).map((log) => (
                   <tr key={log.id} className="hover:bg-[var(--color-ivory-100)] transition-colors">
                     <td className="px-4 py-3">

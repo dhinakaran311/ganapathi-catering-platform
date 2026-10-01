@@ -1,7 +1,8 @@
 // app/admin/settings/page.tsx — A4: Admin settings page stub
 
 import Link from 'next/link';
-import { Palette, User, Bell } from 'lucide-react';
+import { Palette, User, Bell, Shield } from 'lucide-react';
+import { getCurrentUserWithRole } from '@/lib/auth/roles';
 
 const sections = [
   {
@@ -10,6 +11,7 @@ const sections = [
     title: 'Profile & Security',
     desc: 'Change your email, password, and enable two-factor authentication (2FA).',
     accent: 'green',
+    ownerOnly: false,
   },
   {
     href: '/admin/settings/theme',
@@ -17,6 +19,7 @@ const sections = [
     title: 'Theme & Branding',
     desc: 'Customise colours, logos, and hero text displayed on the public website.',
     accent: 'gold',
+    ownerOnly: false,
   },
   {
     href: '/admin/settings/notifications',
@@ -24,10 +27,21 @@ const sections = [
     title: 'Notifications',
     desc: 'Configure WhatsApp and notification preferences for new enquiries.',
     accent: 'brown',
+    ownerOnly: false,
+  },
+  {
+    href: '/admin/settings/team',
+    icon: <Shield size={20} />,
+    title: 'Team & Roles',
+    desc: 'Manage staff access levels: Owner, Admin, Staff, and Viewer.',
+    accent: 'purple',
+    ownerOnly: true,
   },
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const { role } = await getCurrentUserWithRole();
+  const visibleSections = sections.filter((s) => !s.ownerOnly || role === 'OWNER');
   return (
     <div>
       <div className="mb-8">
@@ -40,7 +54,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sections.map(({ href, icon, title, desc, accent }) => (
+        {visibleSections.map(({ href, icon, title, desc, accent }) => (
           <Link
             key={href}
             href={href}
@@ -52,6 +66,8 @@ export default function SettingsPage() {
                   ? 'bg-[var(--color-green-100)] text-[var(--color-green-700)]'
                   : accent === 'gold'
                   ? 'bg-[var(--color-gold-100)] text-[var(--color-gold-700)]'
+                  : accent === 'purple'
+                  ? 'bg-purple-100 text-purple-700'
                   : 'bg-[var(--color-ivory-300)] text-[var(--color-brown-700)]'
               }`}
             >

@@ -6,6 +6,7 @@
 import type { Metadata } from 'next';
 import { Playfair_Display, Noto_Sans } from 'next/font/google';
 import { createClient } from '@/lib/supabase/server';
+import { getCurrentUserWithRole } from '@/lib/auth/roles';
 import AdminLayoutClient from '@/components/admin/AdminLayoutClient';
 import '../globals.css';
 
@@ -40,17 +41,16 @@ export default async function AdminLayout({
 }: { 
   children: React.ReactNode;
 }) {
-  // Middleware already handles the redirect for unauthenticated requests.
-  // We still fetch the user here for display purposes.
+  // Middleware handles unauthenticated redirects.
+  // Fetch user + role here for layout display (role badge, nav visibility).
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const { role } = await getCurrentUserWithRole();
 
-  // For login page, just render children directly (it has its own layout)
   if (!user) {
     return <>{children}</>;
   }
 
-  // For authenticated admin pages, wrap with full layout
   return (
     <html
       lang="en"
@@ -58,7 +58,7 @@ export default async function AdminLayout({
       suppressHydrationWarning
     >
       <body className="bg-[var(--color-ivory-200)] text-[var(--color-brown-900)]">
-        <AdminLayoutClient user={user}>
+        <AdminLayoutClient user={user} role={role}>
           {children}
         </AdminLayoutClient>
       </body>

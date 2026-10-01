@@ -58,7 +58,8 @@ async function ReportsContent() {
   const { data: monthly } = await supabase
     .from('enquiries')
     .select('created_at, status, event_type')
-    .gte('created_at', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
+    .gte('created_at', // eslint-disable-next-line react-hooks/purity
+    new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
     .order('created_at', { ascending: false });
 
   const eventCounts: Record<string, number> = {};
