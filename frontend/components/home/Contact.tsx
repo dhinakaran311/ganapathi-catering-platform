@@ -41,6 +41,7 @@ export default function Contact() {
     const saved = localStorage.getItem(FORM_STORAGE_KEY);
     if (saved) {
       try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFormData({ ...defaultForm, ...JSON.parse(saved) });
       } catch {
         // ignore

@@ -23,6 +23,7 @@ export default function DeleteCustomerButton({ id, name }: { id: string; name: s
       if (!res.ok) throw new Error(json.error || 'Failed to delete');
       
       router.refresh();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       alert(err.message || 'Error deleting customer');
       setIsDeleting(false);

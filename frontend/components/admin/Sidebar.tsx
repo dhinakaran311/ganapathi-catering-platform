@@ -20,9 +20,18 @@ import {
   Bell,
   Receipt,
   X,
+  Shield,
 } from 'lucide-react';
+import type { StaffRole } from '@/types/staff';
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  minRole?: StaffRole;
+}
+
+const navItems: NavItem[] = [
   { href: '/admin/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/enquiries',  label: 'Enquiries',  icon: ClipboardList },
   { href: '/admin/invoices',   label: 'Invoices',   icon: Receipt },
@@ -32,10 +41,22 @@ const navItems = [
   { href: '/admin/settings',   label: 'Settings',   icon: Settings },
 ];
 
+const ROLE_RANK: Record<StaffRole, number> = { OWNER: 4, ADMIN: 3, STAFF: 2, VIEWER: 1 };
+
+function canSee(role: StaffRole | null, minRole?: StaffRole) {
+  if (!minRole) return true;
+  if (!role) return false;
+  return ROLE_RANK[role] >= ROLE_RANK[minRole];
+}
+
+interface AdminSidebarProps {
+  role?: StaffRole | null;
+}
+
 // Custom event for mobile menu control
 const MOBILE_MENU_EVENT = 'toggleMobileMenu';
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ role }: AdminSidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -48,6 +69,7 @@ export default function AdminSidebar() {
 
   // Close mobile menu when route changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
@@ -112,7 +134,7 @@ export default function AdminSidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         <ul className="space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.filter((item) => canSee(role ?? null, item.minRole)).map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + '/');
             return (
               <li key={href}>
@@ -133,6 +155,25 @@ export default function AdminSidebar() {
               </li>
             );
           })}
+          {/* Team link — OWNER only */}
+          {role === 'OWNER' && (
+            <li>
+              <Link
+                href="/admin/settings/team"
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg font-body text-sm font-medium transition-all duration-150
+                  ${pathname.startsWith('/admin/settings/team')
+                    ? 'text-white bg-white/10 border-l-2 pl-[10px]'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }
+                `}
+                style={pathname.startsWith('/admin/settings/team') ? { borderLeftColor: 'var(--color-gold-500)' } : {}}
+              >
+                <Shield size={18} className={pathname.startsWith('/admin/settings/team') ? 'text-[var(--color-gold-500)]' : ''} />
+                Team & Roles
+              </Link>
+            </li>
+          )}
         </ul>
       </nav>
 
