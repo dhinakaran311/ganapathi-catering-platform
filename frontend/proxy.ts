@@ -1,4 +1,11 @@
+// proxy.ts — Next.js 16 routing proxy
+// Handles two concerns:
+//   1. Supabase session refresh on every request
+//   2. Admin route protection (redirect to login if unauthenticated)
+//   3. next-intl locale routing for public pages
+
 import createMiddleware from 'next-intl/middleware';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { routing } from './i18n/routing';
@@ -6,40 +13,66 @@ import { routing } from './i18n/routing';
 // next-intl proxy for locale routing
 const intlProxy = createMiddleware(routing);
 
-// Named proxy function (Next.js 16 convention)
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Handle admin routes — protect with auth cookie check
+  // ── Admin route handling ───────────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
-    // Let the login page through
-    if (pathname === '/admin/login') {
-      return NextResponse.next();
-    }
+    const isLoginRoute = pathname.startsWith('/admin/login');
 
-    // Check for Supabase auth cookie (sb-<project>-auth-token)
-    const authCookies = request.cookies.getAll().filter(
-      (cookie) => cookie.name.includes('-auth-token') || cookie.name.startsWith('sb-')
+    // Refresh Supabase session and get user
+    let response = NextResponse.next({ request });
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value)
+            );
+            response = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          },
+        },
+      }
     );
 
-    if (authCookies.length === 0) {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Redirect unauthenticated users to login
+    if (!isLoginRoute && !user) {
       const loginUrl = new URL('/admin/login', request.url);
-      loginUrl.searchParams.set('redirectTo', pathname);
+      loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    return NextResponse.next();
+    // Redirect authenticated users away from login
+    if (isLoginRoute && user) {
+      return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+    }
+
+    return response;
   }
 
-  // For all other matched routes — run next-intl proxy
+  // ── Public locale routing (next-intl) ─────────────────────────────────────
   return intlProxy(request);
 }
 
 export const config = {
-  // Match internationalized pathnames + admin routes
   matcher: [
+    // Admin routes
+    '/admin/:path*',
+    // Internationalized public routes
     '/',
     '/(ta|en)/:path*',
-    '/admin/:path*',
+    // Exclude static assets
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
