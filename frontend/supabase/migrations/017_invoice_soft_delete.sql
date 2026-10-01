@@ -112,55 +112,55 @@ CREATE OR REPLACE FUNCTION cancel_invoice(
   invoice_id UUID
 ) AS $$
 DECLARE
-  payment_count INT;
-  invoice_status TEXT;
+  v_payment_count INT;
+  v_invoice_status TEXT;
 BEGIN
-  -- Check if invoice exists
-  SELECT status INTO invoice_status
-  FROM invoices
-  WHERE id = p_invoice_id;
-  
-  IF invoice_status IS NULL THEN
-    RETURN QUERY SELECT false, 'Invoice not found', p_invoice_id;
+  -- Check if invoice exists (use table alias to avoid ambiguity)
+  SELECT inv.status INTO v_invoice_status
+  FROM invoices inv
+  WHERE inv.id = p_invoice_id;
+
+  IF v_invoice_status IS NULL THEN
+    RETURN QUERY SELECT false, 'Invoice not found'::TEXT, p_invoice_id;
     RETURN;
   END IF;
-  
+
   -- Check if already cancelled
-  IF invoice_status = 'CANCELLED' THEN
-    RETURN QUERY SELECT false, 'Invoice already cancelled', p_invoice_id;
+  IF v_invoice_status = 'CANCELLED' THEN
+    RETURN QUERY SELECT false, 'Invoice already cancelled'::TEXT, p_invoice_id;
     RETURN;
   END IF;
-  
-  -- Count associated payments
-  SELECT COUNT(*) INTO payment_count
-  FROM payments
-  WHERE invoice_id = p_invoice_id
-    AND is_deleted = false;
-  
+
+  -- Count associated payments (use table alias to avoid ambiguous column reference)
+  SELECT COUNT(*) INTO v_payment_count
+  FROM payments pmt
+  WHERE pmt.invoice_id = p_invoice_id
+    AND pmt.is_deleted = false;
+
   -- Perform soft delete
-  UPDATE invoices
-  SET 
-    status = 'CANCELLED',
-    is_deleted = true,
-    cancelled_at = NOW(),
-    cancelled_by = p_user_id,
+  UPDATE invoices inv
+  SET
+    status              = 'CANCELLED',
+    is_deleted          = true,
+    cancelled_at        = NOW(),
+    cancelled_by        = p_user_id,
     cancellation_reason = COALESCE(p_reason, 'Cancelled by admin'),
-    updated_at = NOW()
-  WHERE id = p_invoice_id;
-  
+    updated_at          = NOW()
+  WHERE inv.id = p_invoice_id;
+
   -- Return success with info
-  IF payment_count > 0 THEN
-    RETURN QUERY SELECT 
-      true, 
-      format('Invoice cancelled. %s payment record(s) preserved.', payment_count),
+  IF v_payment_count > 0 THEN
+    RETURN QUERY SELECT
+      true,
+      format('Invoice cancelled. %s payment record(s) preserved.', v_payment_count)::TEXT,
       p_invoice_id;
   ELSE
-    RETURN QUERY SELECT 
-      true, 
-      'Invoice cancelled successfully.',
+    RETURN QUERY SELECT
+      true,
+      'Invoice cancelled successfully.'::TEXT,
       p_invoice_id;
   END IF;
-  
+
   RETURN;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
