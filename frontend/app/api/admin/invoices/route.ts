@@ -1,7 +1,5 @@
-// app/api/admin/invoices/route.ts — Phase 3: Audit logging + soft-delete
-
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireMinRole, requireAnyRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
 
 /* ── audit helper ── */
@@ -23,11 +21,10 @@ async function writeAudit(opts: {
   });
 }
 
-/* GET  /api/admin/invoices?enquiry_id=xxx  — list invoices for an enquiry */
+/* GET  /api/admin/invoices?enquiry_id=xxx  — list invoices (VIEWER+) */
 export async function GET(req: NextRequest) {
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireMinRole('VIEWER');
+  if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
   const enquiryId = req.nextUrl.searchParams.get('enquiry_id');
@@ -43,13 +40,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* POST /api/admin/invoices  — create new invoice + INVOICE_CREATED audit */
+/* POST /api/admin/invoices  — create new invoice (STAFF+) */
 export async function POST(req: NextRequest) {
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  const supabase = createAdminClient();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireMinRole('STAFF');
+  if (auth instanceof NextResponse) return auth;
 
+  const supabase = createAdminClient();
+  const user = auth.user;
   const body = await req.json();
 
   const { data, error } = await supabase
@@ -84,13 +81,13 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data, { status: 201 });
 }
 
-/* PUT /api/admin/invoices  — update full invoice + INVOICE_UPDATED audit */
+/* PUT /api/admin/invoices  — update full invoice (STAFF+) */
 export async function PUT(req: NextRequest) {
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  const supabase = createAdminClient();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireMinRole('STAFF');
+  if (auth instanceof NextResponse) return auth;
 
+  const supabase = createAdminClient();
+  const user = auth.user;
   const body = await req.json();
   const { id, ...rest } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
@@ -124,13 +121,13 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* PATCH /api/admin/invoices  — partial update; logs INVOICE_SENT when sent_at is patched */
+/* PATCH /api/admin/invoices  — partial update; ADMIN+ for cancel (STAFF+ for send) */
 export async function PATCH(req: NextRequest) {
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  const supabase = createAdminClient();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireMinRole('STAFF');
+  if (auth instanceof NextResponse) return auth;
 
+  const supabase = createAdminClient();
+  const user = auth.user;
   const body = await req.json();
   const { id, ...patch } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
@@ -168,14 +165,13 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* DELETE /api/admin/invoices?id=xxx&reason=...
-   Now performs SOFT DELETE (cancellation) instead of physical deletion.
-   The RLS policy on invoices (migration 017) blocks physical DELETEs for everyone. */
+/* DELETE /api/admin/invoices?id=xxx — soft delete / cancel (ADMIN+) */
 export async function DELETE(req: NextRequest) {
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
+  const auth = await requireAnyRole('OWNER', 'ADMIN');
+  if (auth instanceof NextResponse) return auth;
+
   const supabase = createAdminClient();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = auth.user;
 
   const id = req.nextUrl.searchParams.get('id');
   const reason = req.nextUrl.searchParams.get('reason') ?? 'Cancelled by admin';

@@ -105,8 +105,9 @@ export async function POST(req: NextRequest) {
       { success: true, id: data.id, tracking_code: data.tracking_code },
       { status: 201 }
     );
-  } catch (err: any) {
-    console.error('[enquiries API] Unexpected error:', err);
+  } catch (err: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    console.error('[enquiries API] Unexpected error:', (err as any)?.message ?? err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

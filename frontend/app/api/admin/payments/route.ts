@@ -5,21 +5,13 @@
 // POST   /api/admin/payments                   — record a new payment
 // PATCH  /api/admin/payments                   — verify or reject a payment
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { requireMinRole, requireAnyRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
 import type { PaymentType, PaymentMethodType, PaymentStatusType } from '@/types/payment';
 
 const VALID_TYPES:    PaymentType[]         = ['ADVANCE', 'PARTIAL', 'FINAL', 'OTHER'];
 const VALID_METHODS:  PaymentMethodType[]   = ['UPI', 'CASH', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'];
-const VALID_STATUSES: PaymentStatusType[]   = ['PENDING', 'VERIFIED', 'REJECTED'];
-
-/* ── auth helper ── */
-async function requireAdmin() {
-  const authClient = await createClient();
-  const { data: { user } } = await authClient.auth.getUser();
-  return user;
-}
 
 /* ── audit helper ── */
 async function writeAudit(opts: {
@@ -41,11 +33,11 @@ async function writeAudit(opts: {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   GET — list payments
+   GET — list payments (VIEWER+)
 ───────────────────────────────────────────────────────────────────────── */
 export async function GET(req: NextRequest) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireMinRole('VIEWER');
+  if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
   const invoiceId = req.nextUrl.searchParams.get('invoice_id');
@@ -66,14 +58,15 @@ export async function GET(req: NextRequest) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   POST — record a new payment
+   POST — record a new payment (STAFF+)
 ───────────────────────────────────────────────────────────────────────── */
 export async function POST(req: NextRequest) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await requireMinRole('STAFF');
+  if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
   const body = await req.json();
+  const user = auth.user;
 
   /* ── validation ── */
   const { invoice_id, amount, payment_type, payment_method } = body;
@@ -165,16 +158,18 @@ export async function POST(req: NextRequest) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   PATCH — verify or reject a payment
+   PATCH — verify or reject a payment (ADMIN+)
    Body: { id, action: 'verify' | 'reject', rejection_reason? }
 ───────────────────────────────────────────────────────────────────────── */
 export async function PATCH(req: NextRequest) {
-  const user = await requireAdmin();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Verification/rejection is an ADMIN+ action
+  const auth = await requireAnyRole('OWNER', 'ADMIN');
+  if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
   const body = await req.json();
   const { id, action, rejection_reason } = body;
+  const user = auth.user;
 
   if (!id)     return NextResponse.json({ error: 'id is required' }, { status: 400 });
   if (!action) return NextResponse.json({ error: 'action is required (verify | reject)' }, { status: 400 });
