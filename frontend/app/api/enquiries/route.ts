@@ -34,10 +34,47 @@ export async function POST(req: NextRequest) {
     // Use admin client (service role) to bypass RLS — this is a server-side route
     const supabase = createAdminClient();
 
+    // AUTO-CREATE OR LINK CUSTOMER
+    const cleanPhone = phone.replace(/\D/g, '');
+    let customerId = null;
+
+    if (cleanPhone) {
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id, total_orders')
+        .eq('phone', cleanPhone)
+        .single();
+
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        // Increment event count
+        await supabase
+          .from('customers')
+          .update({ total_orders: (existingCustomer.total_orders || 0) + 1 })
+          .eq('id', customerId);
+      } else {
+        // Create new customer
+        const { data: newCustomer } = await supabase
+          .from('customers')
+          .insert({
+            name,
+            phone: cleanPhone,
+            total_orders: 1
+          })
+          .select('id')
+          .single();
+          
+        if (newCustomer) {
+          customerId = newCustomer.id;
+        }
+      }
+    }
+
     const enquiry = {
       name,
       phone,
       whatsapp: phone,
+      customer_id: customerId,
       event_type: body.event || null,
       event_date: body.eventDate || null,
       event_location: body.eventLocation || null,

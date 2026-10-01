@@ -29,11 +29,11 @@ export default async function CustomerDetailPage({
 
   if (error || !customer) notFound();
 
-  // Fetch related enquiries
+  // Fetch related enquiries using customer_id FK (Phase 3 fix — no more phone matching)
   const { data: enquiries } = await supabase
     .from('enquiries')
-    .select('id, event_type, event_date, guest_count, status, created_at')
-    .eq('phone', customer.phone)
+    .select('id, event_type, event_date, guest_count, status, created_at, customer_id')
+    .eq('customer_id', id)
     .order('created_at', { ascending: false });
 
   // Fetch invoices for this customer
@@ -92,9 +92,6 @@ export default async function CustomerDetailPage({
             >
               <Phone size={14} /> {customer.phone}
             </a>
-            {customer.email && (
-              <p className="font-body text-sm text-[var(--color-brown-500)]">{customer.email}</p>
-            )}
 
             <div className="mt-6 pt-6 border-t border-[var(--color-ivory-300)] grid grid-cols-2 gap-4 text-center">
               <div>
@@ -156,7 +153,7 @@ export default async function CustomerDetailPage({
             <div className="divide-y divide-[var(--color-ivory-200)]">
               {!enquiries || enquiries.length === 0 ? (
                 <p className="px-6 py-8 text-center font-body text-sm text-[var(--color-brown-400)]">
-                  No enquiries found for this phone number.
+                  No enquiries found for this customer.
                 </p>
               ) : (
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any

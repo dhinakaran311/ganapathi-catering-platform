@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { ArrowRight, Phone } from 'lucide-react';
+import DeleteCustomerButton from '@/components/admin/DeleteCustomerButton';
 
 export default async function CustomersPage({
   searchParams,
@@ -14,7 +15,7 @@ export default async function CustomersPage({
 
   let query = supabase
     .from('customers')
-    .select('id, name, phone, email, total_events, last_event_date, created_at')
+    .select('id, name, phone, total_orders, last_order_date, created_at')
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -57,7 +58,7 @@ export default async function CustomersPage({
           <table className="w-full" aria-label="Customers list">
             <thead className="bg-[var(--color-ivory-100)] border-b border-[var(--color-ivory-300)]">
               <tr>
-                {['Name', 'Phone', 'Email', 'Total Events', 'Last Event', 'Since', ''].map((h) => (
+                {['Name', 'Phone', 'Total Events', 'Last Event', 'Since', ''].map((h) => (
                   <th
                     key={h}
                     className="text-left px-4 py-3 font-body text-xs font-semibold uppercase tracking-wide text-[var(--color-brown-500)]"
@@ -70,7 +71,7 @@ export default async function CustomersPage({
             <tbody className="divide-y divide-[var(--color-ivory-200)]">
               {!customers || customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center font-body text-sm text-[var(--color-brown-400)]">
+                  <td colSpan={6} className="px-4 py-12 text-center font-body text-sm text-[var(--color-brown-400)]">
                     No customers found{q ? ` matching "${q}"` : ''}.
                   </td>
                 </tr>
@@ -85,27 +86,27 @@ export default async function CustomersPage({
                         <Phone size={12} /> {c.phone}
                       </a>
                     </td>
-                    <td className="px-4 py-3 font-body text-sm text-[var(--color-brown-600)]">
-                      {c.email ?? '—'}
-                    </td>
                     <td className="px-4 py-3 text-center">
                       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full font-body text-sm font-bold text-white" style={{ backgroundColor: 'var(--color-green-800)' }}>
-                        {c.total_events ?? 0}
+                        {c.total_orders ?? 0}
                       </span>
                     </td>
                     <td className="px-4 py-3 font-body text-sm text-[var(--color-brown-600)]">
-                      {c.last_event_date ? new Date(c.last_event_date).toLocaleDateString('en-IN') : '—'}
+                      {c.last_order_date ? new Date(c.last_order_date).toLocaleDateString('en-IN') : '—'}
                     </td>
                     <td className="px-4 py-3 font-body text-xs text-[var(--color-brown-400)]">
                       {new Date(c.created_at).toLocaleDateString('en-IN')}
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/customers/${c.id}`}
-                        className="flex items-center gap-1 font-body text-xs font-medium text-[var(--color-green-700)] hover:text-[var(--color-green-900)] transition-colors"
-                      >
-                        View <ArrowRight size={12} />
-                      </Link>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/admin/customers/${c.id}`}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-body text-xs font-medium text-[var(--color-green-700)] bg-[var(--color-green-50)] hover:bg-[var(--color-green-100)] transition-colors"
+                        >
+                          View <ArrowRight size={12} />
+                        </Link>
+                        <DeleteCustomerButton id={c.id} name={c.name} />
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -135,18 +136,13 @@ export default async function CustomersPage({
                   <h3 className="font-body text-base font-semibold text-[var(--color-brown-900)] truncate">
                     {c.name}
                   </h3>
-                  {c.email && (
-                    <p className="font-body text-xs text-[var(--color-brown-500)] mt-0.5 truncate">
-                      {c.email}
-                    </p>
-                  )}
                 </div>
                 <div className="flex flex-col items-center ml-3 flex-shrink-0">
                   <span 
                     className="inline-flex items-center justify-center w-10 h-10 rounded-full font-body text-sm font-bold text-white" 
                     style={{ backgroundColor: 'var(--color-green-800)' }}
                   >
-                    {c.total_events ?? 0}
+                    {c.total_orders ?? 0}
                   </span>
                   <span className="font-body text-xs text-[var(--color-brown-400)] mt-1">
                     Events
@@ -168,7 +164,7 @@ export default async function CustomersPage({
                 <div>
                   <span className="font-body text-xs text-[var(--color-brown-400)] block mb-0.5">Last Event</span>
                   <span className="font-body font-medium text-[var(--color-brown-900)] block">
-                    {c.last_event_date ? new Date(c.last_event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                    {c.last_order_date ? new Date(c.last_order_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
                   </span>
                 </div>
               </div>
@@ -177,13 +173,18 @@ export default async function CustomersPage({
                 Customer since {new Date(c.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
               </div>
 
-              {/* View Button */}
-              <Link
-                href={`/admin/customers/${c.id}`}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-[var(--color-green-800)] text-white font-body text-sm font-semibold hover:bg-[var(--color-green-900)] transition-colors min-h-[44px]"
-              >
-                View Profile <ArrowRight size={16} />
-              </Link>
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/admin/customers/${c.id}`}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg bg-[var(--color-green-800)] text-white font-body text-sm font-semibold hover:bg-[var(--color-green-900)] transition-colors min-h-[44px]"
+                >
+                  View Profile <ArrowRight size={16} />
+                </Link>
+                <div className="flex-shrink-0 flex items-center justify-center w-[44px] h-[44px] rounded-lg border border-[var(--color-ivory-300)]">
+                  <DeleteCustomerButton id={c.id} name={c.name} />
+                </div>
+              </div>
             </div>
           ))
         )}

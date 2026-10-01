@@ -1,8 +1,27 @@
-// app/api/admin/invoices/route.ts — Phase 5: Invoice CRUD API
+// app/api/admin/invoices/route.ts — Phase 3: Audit logging + soft-delete
 
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+
+/* ── audit helper ── */
+async function writeAudit(opts: {
+  supabase: ReturnType<typeof createAdminClient>;
+  userId: string;
+  action: string;
+  recordId: string;
+  oldData?: object | null;
+  newData?: object | null;
+}) {
+  await opts.supabase.from('audit_logs').insert({
+    user_id:    opts.userId,
+    action:     opts.action,
+    table_name: 'invoices',
+    record_id:  opts.recordId,
+    old_data:   opts.oldData ?? null,
+    new_data:   opts.newData ?? null,
+  });
+}
 
 /* GET  /api/admin/invoices?enquiry_id=xxx  — list invoices for an enquiry */
 export async function GET(req: NextRequest) {
@@ -24,7 +43,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* POST /api/admin/invoices  — create new invoice */
+/* POST /api/admin/invoices  — create new invoice + INVOICE_CREATED audit */
 export async function POST(req: NextRequest) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -52,10 +71,20 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Audit: INVOICE_CREATED
+  await writeAudit({
+    supabase,
+    userId: user.id,
+    action: 'INVOICE_CREATED',
+    recordId: data.id,
+    newData: data,
+  });
+
   return NextResponse.json(data, { status: 201 });
 }
 
-/* PUT /api/admin/invoices  — update full invoice */
+/* PUT /api/admin/invoices  — update full invoice + INVOICE_UPDATED audit */
 export async function PUT(req: NextRequest) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -66,6 +95,13 @@ export async function PUT(req: NextRequest) {
   const { id, ...rest } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
+  // Fetch current invoice for audit diff
+  const { data: existing } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', id)
+    .single();
+
   const { data, error } = await supabase
     .from('invoices')
     .update(rest)
@@ -74,10 +110,21 @@ export async function PUT(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Audit: INVOICE_UPDATED
+  await writeAudit({
+    supabase,
+    userId: user.id,
+    action: 'INVOICE_UPDATED',
+    recordId: id,
+    oldData: existing,
+    newData: data,
+  });
+
   return NextResponse.json(data);
 }
 
-/* PATCH /api/admin/invoices  — partial update (status, sent_at, paid_at, etc.) */
+/* PATCH /api/admin/invoices  — partial update; logs INVOICE_SENT when sent_at is patched */
 export async function PATCH(req: NextRequest) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -88,6 +135,16 @@ export async function PATCH(req: NextRequest) {
   const { id, ...patch } = body;
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
+  // Fetch current invoice for audit diff
+  const { data: existing } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  // Normalise status to uppercase if provided
+  if (patch.status) patch.status = (patch.status as string).toUpperCase();
+
   const { data, error } = await supabase
     .from('invoices')
     .update(patch)
@@ -96,12 +153,24 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Audit: INVOICE_SENT when sent_at is set, else INVOICE_UPDATED
+  const auditAction = patch.sent_at ? 'INVOICE_SENT' : 'INVOICE_UPDATED';
+  await writeAudit({
+    supabase,
+    userId: user.id,
+    action: auditAction,
+    recordId: id,
+    oldData: existing,
+    newData: data,
+  });
+
   return NextResponse.json(data);
 }
 
-/* DELETE /api/admin/invoices?id=xxx
-   Blocked if the invoice has any payment records.
-   Cancel the invoice via PATCH { id, status: 'cancelled' } instead. */
+/* DELETE /api/admin/invoices?id=xxx&reason=...
+   Now performs SOFT DELETE (cancellation) instead of physical deletion.
+   The RLS policy on invoices (migration 017) blocks physical DELETEs for everyone. */
 export async function DELETE(req: NextRequest) {
   const authClient = await createClient();
   const { data: { user } } = await authClient.auth.getUser();
@@ -109,25 +178,49 @@ export async function DELETE(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const id = req.nextUrl.searchParams.get('id');
+  const reason = req.nextUrl.searchParams.get('reason') ?? 'Cancelled by admin';
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  // Guard: prevent deletion when payment records exist
-  const { count } = await supabase
-    .from('payments')
-    .select('id', { count: 'exact', head: true })
-    .eq('invoice_id', id);
+  // Fetch current invoice for audit
+  const { data: invoice, error: fetchErr } = await supabase
+    .from('invoices')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-  if (count && count > 0) {
-    return NextResponse.json(
-      {
-        error: 'Cannot delete an invoice that has payment records. Cancel the invoice instead.',
-        hint: 'PATCH { id, status: "cancelled" }',
-      },
-      { status: 422 }
-    );
+  if (fetchErr || !invoice) {
+    return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
   }
 
-  const { error } = await supabase.from('invoices').delete().eq('id', id);
+  if (invoice.status === 'CANCELLED') {
+    return NextResponse.json({ error: 'Invoice is already cancelled' }, { status: 422 });
+  }
+
+  // Soft-delete: mark as CANCELLED and preserve all data
+  const { data, error } = await supabase
+    .from('invoices')
+    .update({
+      status: 'CANCELLED',
+      is_deleted: true,
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: user.id,
+      cancellation_reason: reason,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true });
+
+  // Audit: INVOICE_CANCELLED
+  await writeAudit({
+    supabase,
+    userId: user.id,
+    action: 'INVOICE_CANCELLED',
+    recordId: id,
+    oldData: invoice,
+    newData: data,
+  });
+
+  return NextResponse.json({ success: true, data });
 }

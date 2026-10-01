@@ -3,9 +3,10 @@
 // components/admin/InvoiceBuilder.tsx — Phase 5: Full Invoice Generator
 // Admin fills in this form → previews the invoice → saves to DB → sends via WhatsApp
 
-import { useState, useCallback, useId } from 'react';
-import { Plus, Trash2, MessageCircle, Save, FileText, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Plus, Trash2, MessageCircle, Save, FileText, ChevronUp, Copy, XCircle } from 'lucide-react';
 import type { InvoiceLineItem, InvoiceData } from '@/types/invoice';
+import CancelInvoiceModal from '@/components/admin/CancelInvoiceModal';
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -47,8 +48,6 @@ interface Props {
 
 /* ───────────────────────────── component ───────────────────────────── */
 export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoiceId, onSaved }: Props) {
-  const formId = useId();
-
   /* ── state ── */
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -57,6 +56,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const [customerName, setCustomerName] = useState(defaultData?.customerName ?? '');
   const [customerPhone, setCustomerPhone] = useState(defaultData?.customerPhone ?? '');
@@ -153,8 +153,8 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       setSavedInvoiceNumber(json.invoice_number);
       setSuccessMsg(`✅ Invoice ${json.invoice_number} saved!`);
       onSaved?.(json.id, json.invoice_number);
-    } catch (e: any) {
-      setErrorMsg(e.message);
+    } catch (e: unknown) {
+      setErrorMsg(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -168,14 +168,14 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
     const msg = buildWhatsAppText();
     const url = `https://wa.me/91${customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
 
-    // Mark as sent in DB
+    // Mark as SENT in DB (triggers INVOICE_SENT audit on the server)
     if (savedInvoiceId) {
       setSending(true);
       try {
         await fetch('/api/admin/invoices', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: savedInvoiceId, status: 'sent', sent_at: new Date().toISOString() }),
+          body: JSON.stringify({ id: savedInvoiceId, status: 'SENT', sent_at: new Date().toISOString() }),
         });
       } finally {
         setSending(false);
@@ -631,7 +631,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
           {/* Buttons - stack on mobile, row on desktop */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-row gap-2 sm:gap-3">
             {!savedInvoiceNumber && <div className="hidden lg:block flex-1"></div>}
-            
+
             <button
               type="button"
               onClick={() => setShowPreview((v) => !v)}
@@ -661,9 +661,38 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
               <MessageCircle size={16} />
               {sending ? 'Sending…' : 'Send via WhatsApp'}
             </button>
+
+            {/* Cancel Invoice — only shown for already-saved invoices */}
+            {savedInvoiceId && (
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(true)}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-orange-700 border border-orange-300 hover:bg-orange-50 transition-colors min-h-[44px]"
+                title="Cancel this invoice (soft delete — record preserved)"
+              >
+                <XCircle size={16} />
+                Cancel Invoice
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* ── Cancel Invoice Modal ── */}
+      {showCancelModal && savedInvoiceId && (
+        <CancelInvoiceModal
+          invoiceId={savedInvoiceId}
+          invoiceNumber={savedInvoiceNumber}
+          onClose={() => setShowCancelModal(false)}
+          onSuccess={() => {
+            setShowCancelModal(false);
+            setSuccessMsg(`✅ Invoice ${savedInvoiceNumber} has been cancelled. Record preserved for audit.`);
+            // Clear saved state so the form can be used for a new invoice
+            setSavedInvoiceId('');
+            setSavedInvoiceNumber('');
+          }}
+        />
+      )}
     </div>
   );
 }
