@@ -1,74 +1,68 @@
 // app/admin/reports/page.tsx — Analytics and financial reports
 
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getEnquiriesByStatus } from '@/lib/analytics/queries';
+import { getEnquiriesByStatus, getMonthlyFinancials, getFinancialOverview } from '@/lib/analytics/queries';
 import { ENQUIRY_STATUSES, ENQUIRY_STATUS_LABELS } from '@/types/enquiry';
 import { INVOICE_STATUS_LABELS, INVOICE_STATUS_COLORS, INVOICE_STATUSES, type InvoiceStatus } from '@/types/invoice';
-import type { InvoicePaymentSummary } from '@/types/payment';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
 async function ReportsContent() {
-  const supabase = await createClient();
   const adminSupabase = createAdminClient();
 
-  // Enquiry stats
-  const statusCounts = await getEnquiriesByStatus();
+  // ── Run all queries in parallel ──────────────────────────────────────────
+  const [statusCounts, financialOverview, monthlyData, invoicesRaw, paymentsRaw, summariesRaw, monthlyEnquiries] =
+    await Promise.all([
+      getEnquiriesByStatus(),
+      getFinancialOverview(),
+      getMonthlyFinancials(6),
+      adminSupabase.from('invoices').select('id, status, total_amount'),
+      adminSupabase.from('payments').select('payment_method, amount, status').eq('is_deleted', false),
+      adminSupabase.from('invoice_payment_summary').select('payment_status'),
+      adminSupabase
+        .from('enquiries')
+        .select('event_type')
+        .gte('created_at', new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString()),
+    ]);
 
-  // Invoice stats by status
-  const { data: invoices } = await adminSupabase
-    .from('invoices')
-    .select('id, status, total_amount');
-
+  // ── Invoice status breakdown ─────────────────────────────────────────────
+  const invoices = invoicesRaw.data ?? [];
   const invoicesByStatus: Record<string, number> = {};
   INVOICE_STATUSES.forEach((s) => { invoicesByStatus[s] = 0; });
-  (invoices ?? []).forEach(({ status }: { status: string }) => {
+  invoices.forEach(({ status }: { status: string }) => {
     const s = status as InvoiceStatus;
     invoicesByStatus[s] = (invoicesByStatus[s] ?? 0) + 1;
   });
 
-  // Payment financial totals
-  const { data: summaries } = await adminSupabase
-    .from('invoice_payment_summary')
-    .select('*');
+  // ── Financial totals — use getFinancialOverview() as single source of truth
+  const totalInvoiced    = financialOverview.totalQuoted;
+  const totalReceived    = financialOverview.amountReceived;
+  const totalOutstanding = financialOverview.outstanding;
+  const totalConfirmed   = financialOverview.totalConfirmed;
+  const cancelledValue   = financialOverview.cancelledValue;
 
-  const totalInvoiced   = (invoices ?? []).filter((i: { status: string }) => i.status !== 'CANCELLED').reduce((s: number, i: { total_amount: number }) => s + (i.total_amount ?? 0), 0);
-  const totalReceived   = (summaries ?? []).reduce((s: number, sm: InvoicePaymentSummary) => s + Number(sm.amount_received), 0);
-  const totalOutstanding = Math.max(totalInvoiced - totalReceived, 0);
-  const paidCount       = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'PAID').length;
-  const partialCount    = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'PARTIALLY_PAID').length;
-  const unpaidCount     = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'UNPAID').length;
+  // ── Payment status counts ─────────────────────────────────────────────────
+  const summaries = summariesRaw.data ?? [];
+  const paidCount    = summaries.filter((sm: { payment_status: string }) => sm.payment_status === 'PAID').length;
+  const partialCount = summaries.filter((sm: { payment_status: string }) => sm.payment_status === 'PARTIALLY_PAID').length;
+  const unpaidCount  = summaries.filter((sm: { payment_status: string }) => sm.payment_status === 'UNPAID').length;
 
-  // Payment method breakdown
-  const { data: payments } = await adminSupabase
-    .from('payments')
-    .select('payment_method, amount, status')
-    .eq('is_deleted', false);
-
+  // ── Payment method breakdown ──────────────────────────────────────────────
   const verifiedByMethod: Record<string, number> = {};
-  (payments ?? []).forEach(({ payment_method, amount, status }: { payment_method: string; amount: number; status: string }) => {
+  (paymentsRaw.data ?? []).forEach(({ payment_method, amount, status }: { payment_method: string; amount: number; status: string }) => {
     if (status === 'VERIFIED') {
       verifiedByMethod[payment_method] = (verifiedByMethod[payment_method] ?? 0) + Number(amount);
     }
   });
 
-  // Monthly enquiry breakdown (last 6 months)
-  const { data: monthly } = await supabase
-    .from('enquiries')
-    .select('created_at, status, event_type')
-    .gte('created_at', // eslint-disable-next-line react-hooks/purity
-    new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString())
-    .order('created_at', { ascending: false });
-
+  // ── Top event types (last 6 months) ──────────────────────────────────────
   const eventCounts: Record<string, number> = {};
-  (monthly ?? []).forEach(({ event_type }: { event_type: string }) => {
+  (monthlyEnquiries.data ?? []).forEach(({ event_type }: { event_type: string }) => {
     if (event_type) eventCounts[event_type] = (eventCounts[event_type] ?? 0) + 1;
   });
-
   const topEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const total = Object.values(eventCounts).reduce((a, b) => a + b, 0) || 1;
+  const topTotal  = Object.values(eventCounts).reduce((a, b) => a + b, 0) || 1;
 
   const reportColors: Record<string, string> = {
     NEW: '#996B0C', CONTACTED: '#2c5282', DISCUSSION: '#6b46c1',
@@ -84,28 +78,34 @@ async function ReportsContent() {
   return (
     <div className="space-y-8">
 
-      {/* ── Financial Summary ── */}
+      {/* ── Financial Overview ── */}
       <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
-        <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-6">
-          Financial Summary
+        <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-1">
+          Financial Overview
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+        <p className="font-body text-xs text-[var(--color-brown-400)] mb-5">
+          Amount Received = VERIFIED payments only · Outstanding = Total Quoted − Received
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4">
           {[
-            { label: 'Total Invoiced',   val: fmt(totalInvoiced),   cls: 'text-[var(--color-brown-900)]' },
-            { label: 'Amount Received',  val: fmt(totalReceived),   cls: 'text-green-700' },
-            { label: 'Outstanding',      val: fmt(totalOutstanding), cls: totalOutstanding > 0 ? 'text-orange-700 font-bold' : 'text-green-700' },
-          ].map(({ label, val, cls }) => (
-            <div key={label} className="rounded-lg border border-[var(--color-ivory-300)] p-3 sm:p-4 text-center">
-              <p className={`font-display text-xl sm:text-2xl font-bold mb-1 ${cls}`}>{val}</p>
-              <p className="font-body text-xs text-[var(--color-brown-500)]">{label}</p>
+            { label: 'Total Quoted',    val: fmt(totalInvoiced),    cls: 'text-[var(--color-brown-900)]',                                         desc: 'All active invoice totals' },
+            { label: 'Total Confirmed', val: fmt(totalConfirmed),   cls: 'text-blue-700',                                                          desc: 'Invoices on CONFIRMED/COMPLETED events' },
+            { label: 'Amount Received', val: fmt(totalReceived),    cls: 'text-green-700',                                                         desc: 'Sum of VERIFIED payments' },
+            { label: 'Outstanding',     val: fmt(totalOutstanding), cls: totalOutstanding > 0 ? 'text-orange-700 font-bold' : 'text-green-700',    desc: 'Quoted − Received' },
+            { label: 'Cancelled Value', val: fmt(cancelledValue),   cls: 'text-red-600',                                                           desc: 'Sum of cancelled invoice totals' },
+          ].map(({ label, val, cls, desc }) => (
+            <div key={label} className="rounded-lg border border-[var(--color-ivory-300)] p-3 sm:p-4">
+              <p className={`font-display text-xl sm:text-2xl font-bold mb-0.5 ${cls}`}>{val}</p>
+              <p className="font-body text-xs font-semibold text-[var(--color-brown-700)]">{label}</p>
+              <p className="font-body text-[10px] text-[var(--color-brown-400)]">{desc}</p>
             </div>
           ))}
         </div>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[
-            { label: 'Paid',          count: paidCount,    cls: 'text-green-700 bg-green-50 border-green-200' },
+            { label: 'Paid',           count: paidCount,    cls: 'text-green-700 bg-green-50 border-green-200' },
             { label: 'Partially Paid', count: partialCount, cls: 'text-orange-700 bg-orange-50 border-orange-200' },
-            { label: 'Unpaid',        count: unpaidCount,  cls: 'text-red-700 bg-red-50 border-red-200' },
+            { label: 'Unpaid',         count: unpaidCount,  cls: 'text-red-700 bg-red-50 border-red-200' },
           ].map(({ label, count, cls }) => (
             <div key={label} className={`rounded-lg border px-2 sm:px-4 py-2 sm:py-3 text-center ${cls}`}>
               <p className="font-display text-xl sm:text-2xl font-bold">{count}</p>
@@ -113,10 +113,52 @@ async function ReportsContent() {
             </div>
           ))}
         </div>
-        <p className="mt-4 font-body text-xs text-[var(--color-brown-400)]">
-          Amount Received = sum of VERIFIED payments only. Pending/Rejected payments are excluded.
-        </p>
       </div>
+
+      {/* ── Monthly Received (by payment_date) ── */}
+      {monthlyData.length > 0 && (
+        <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm p-6">
+          <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-1">
+            Monthly Received (Last {monthlyData.length} Months)
+          </h2>
+          <p className="font-body text-xs text-[var(--color-brown-400)] mb-5">
+            Based on payment date — not invoice creation date. October amount = cash received in October.
+          </p>
+          {(() => {
+            const maxReceived = Math.max(...monthlyData.map((m) => m.amount_received), 1);
+            return (
+              <div className="space-y-4">
+                {monthlyData.map((month) => (
+                  <div key={month.month_start}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-3">
+                        <span className="font-body text-sm font-semibold text-[var(--color-brown-800)] w-20">
+                          {month.month_label}
+                        </span>
+                        <span className="font-body text-xs text-[var(--color-brown-400)]">
+                          {month.payment_count} payment{month.payment_count !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <span className="font-body text-sm font-bold text-[var(--color-brown-900)]">
+                        {fmt(month.amount_received)}
+                      </span>
+                    </div>
+                    <div className="h-3 rounded-full bg-[var(--color-ivory-300)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.round((month.amount_received / maxReceived) * 100)}%`,
+                          backgroundColor: 'var(--color-green-700)',
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* ── Payment Method Breakdown ── */}
       {Object.keys(verifiedByMethod).length > 0 && (
@@ -137,7 +179,7 @@ async function ReportsContent() {
                   <div
                     className="h-full rounded-full"
                     style={{
-                      width: `${Math.round((amount / totalReceived) * 100)}%`,
+                      width: `${totalReceived > 0 ? Math.round((amount / totalReceived) * 100) : 0}%`,
                       backgroundColor: 'var(--color-green-700)',
                     }}
                   />
@@ -168,7 +210,7 @@ async function ReportsContent() {
         <h2 className="font-display text-lg font-bold text-[var(--color-brown-900)] mb-6">
           Enquiry Status Breakdown
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
           {ENQUIRY_STATUSES.map((status) => (
             <div
               key={status}
@@ -180,7 +222,9 @@ async function ReportsContent() {
               >
                 {statusCounts[status] ?? 0}
               </p>
-              <p className="font-body text-xs sm:text-sm text-[var(--color-brown-500)] capitalize">{ENQUIRY_STATUS_LABELS[status]}</p>
+              <p className="font-body text-xs sm:text-sm text-[var(--color-brown-500)] capitalize">
+                {ENQUIRY_STATUS_LABELS[status]}
+              </p>
             </div>
           ))}
         </div>
@@ -207,7 +251,7 @@ async function ReportsContent() {
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
-                      width: `${Math.round((count / total) * 100)}%`,
+                      width: `${Math.round((count / topTotal) * 100)}%`,
                       backgroundColor: 'var(--color-green-700)',
                     }}
                   />

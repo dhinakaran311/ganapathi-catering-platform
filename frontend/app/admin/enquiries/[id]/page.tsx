@@ -11,6 +11,7 @@ import StatusUpdater from '@/components/admin/StatusUpdater';
 import ActivityTimeline from '@/components/admin/ActivityTimeline';
 import BusinessPipeline from '@/components/admin/BusinessPipeline';
 import NextActionPanel from '@/components/admin/NextActionPanel';
+import CompleteOrderButton from '@/components/admin/CompleteOrderButton';
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import type { EnquiryStatus } from '@/types/enquiry';
 import { SOURCE_LABELS, ROLE_BADGE_COLORS, type EnquirySource } from '@/types/staff';
@@ -39,7 +40,8 @@ export default async function EnquiryDetailPage({
 
   // Get current user + role
   const { role } = await getCurrentUserWithRole();
-  const canEdit = hasMinRole(role, 'STAFF');
+  const canEdit    = hasMinRole(role, 'STAFF');
+  const canComplete = hasMinRole(role, 'ADMIN');  // ADMIN+ required to complete orders
   const canViewAudit = hasMinRole(role, 'ADMIN');
 
   // Fetch enquiry
@@ -222,6 +224,12 @@ export default async function EnquiryDetailPage({
                 >
                   <FileText size={18} /> Create Invoice
                 </Link>
+                {canComplete && !['COMPLETED', 'CANCELLED'].includes(enq.status) && (
+                  <CompleteOrderButton
+                    enquiryId={enq.id}
+                    customerName={enq.name}
+                  />
+                )}
               </div>
             </div>
           )}

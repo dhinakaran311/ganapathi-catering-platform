@@ -3,11 +3,12 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { ClipboardList, TrendingUp, Clock, ArrowRight, IndianRupee, Wifi, AlertCircle, Bell } from 'lucide-react';
+import { ClipboardList, TrendingUp, Clock, ArrowRight, IndianRupee, Wifi, AlertCircle, Bell, CalendarDays } from 'lucide-react';
 import StatsCard from '@/components/admin/StatsCard';
-import { getDashboardStats, getRecentEnquiries, getFollowupSummary } from '@/lib/analytics/queries';
+import { getDashboardStats, getRecentEnquiries, getFollowupSummary, getUpcomingEvents } from '@/lib/analytics/queries';
 import { StatsCardSkeleton, TableSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ENQUIRY_STATUS_COLORS, ENQUIRY_STATUS_LABELS, EnquiryStatus } from '@/types/enquiry';
+import { INVOICE_PAYMENT_STATUS_COLORS, INVOICE_PAYMENT_STATUS_LABELS } from '@/types/payment';
 
 // Map source → badge text
 const SOURCE_BADGE: Record<string, string> = {
@@ -20,10 +21,11 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
 async function DashboardContent() {
-  const [stats, recentEnquiries, followup] = await Promise.all([
+  const [stats, recentEnquiries, followup, upcomingEvents] = await Promise.all([
     getDashboardStats(),
     getRecentEnquiries(10),
     getFollowupSummary(),
+    getUpcomingEvents(8),
   ]);
 
   const weeklyTrend =
@@ -125,6 +127,146 @@ async function DashboardContent() {
               <p className="font-display text-2xl font-bold text-blue-600">{followup.upcoming}</p>
               <p className="font-body text-xs text-blue-500 mt-0.5">Upcoming</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming Catering Events */}
+      {upcomingEvents.length > 0 && (
+        <div className="bg-white rounded-xl border border-[var(--color-ivory-300)] shadow-sm overflow-hidden mb-6">
+          <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-[var(--color-ivory-300)]">
+            <div className="flex items-center gap-2">
+              <CalendarDays size={16} className="text-[var(--color-green-700)]" />
+              <h2 className="font-display text-base font-bold text-[var(--color-brown-900)]">
+                Upcoming Events
+              </h2>
+              <span className="font-body text-xs text-[var(--color-brown-400)] bg-[var(--color-ivory-200)] px-2 py-0.5 rounded-full">
+                {upcomingEvents.length}
+              </span>
+            </div>
+            <Link
+              href="/admin/enquiries?status=CONFIRMED"
+              className="font-body text-xs font-medium text-[var(--color-green-700)] hover:text-[var(--color-green-900)]"
+            >
+              View all →
+            </Link>
+          </div>
+
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-[var(--color-ivory-100)]">
+                <tr>
+                  {['Date', 'Customer', 'Event', 'Guests', 'Invoice', 'Received', 'Balance', 'Payment', ''].map((h) => (
+                    <th key={h} className="text-left px-4 py-3 font-body text-xs font-semibold uppercase tracking-wide text-[var(--color-brown-500)]">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-ivory-200)]">
+                {upcomingEvents.map((ev) => {
+                  const psColor = INVOICE_PAYMENT_STATUS_COLORS[ev.payment_status as keyof typeof INVOICE_PAYMENT_STATUS_COLORS] ?? 'bg-gray-100 text-gray-600 border-gray-200';
+                  const psLabel = INVOICE_PAYMENT_STATUS_LABELS[ev.payment_status as keyof typeof INVOICE_PAYMENT_STATUS_LABELS] ?? ev.payment_status;
+                  const daysUntil = Math.ceil((new Date(ev.event_date).getTime() - Date.now()) / 86400000);
+                  return (
+                    <tr key={ev.enquiry_id} className="hover:bg-[var(--color-ivory-100)] transition-colors group">
+                      <td className="px-4 py-3">
+                        <p className="font-body text-sm font-semibold text-[var(--color-brown-900)]">
+                          {new Date(ev.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </p>
+                        <p className={`font-body text-[10px] ${daysUntil <= 3 ? 'text-red-500 font-semibold' : daysUntil <= 7 ? 'text-orange-500' : 'text-[var(--color-brown-400)]'}`}>
+                          {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `in ${daysUntil}d`}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 font-body text-sm font-semibold text-[var(--color-brown-900)]">
+                        {ev.customer_name}
+                      </td>
+                      <td className="px-4 py-3 font-body text-sm text-[var(--color-brown-700)]">
+                        {ev.event_type ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 font-body text-sm text-[var(--color-brown-600)]">
+                        {ev.guest_count ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 font-body text-sm font-semibold text-[var(--color-brown-900)]">
+                        {ev.total_amount > 0 ? fmt(ev.total_amount) : '—'}
+                      </td>
+                      <td className="px-4 py-3 font-body text-sm font-semibold text-green-700">
+                        {fmt(ev.amount_received)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {ev.balance_due > 0
+                          ? <span className="font-body text-sm font-semibold text-orange-600">{fmt(ev.balance_due)}</span>
+                          : <span className="font-body text-sm text-green-600 font-semibold">✅ Clear</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {ev.invoice_id ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-body text-xs font-semibold border ${psColor}`}>
+                            {psLabel}
+                          </span>
+                        ) : (
+                          <span className="font-body text-xs text-[var(--color-brown-400)]">No invoice</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/admin/enquiries/${ev.enquiry_id}`}
+                          className="font-body text-xs font-semibold text-[var(--color-green-800)] opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                        >
+                          Open →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y divide-[var(--color-ivory-200)]">
+            {upcomingEvents.map((ev) => {
+              const psColor = INVOICE_PAYMENT_STATUS_COLORS[ev.payment_status as keyof typeof INVOICE_PAYMENT_STATUS_COLORS] ?? 'bg-gray-100 text-gray-600 border-gray-200';
+              const psLabel = INVOICE_PAYMENT_STATUS_LABELS[ev.payment_status as keyof typeof INVOICE_PAYMENT_STATUS_LABELS] ?? ev.payment_status;
+              const daysUntil = Math.ceil((new Date(ev.event_date).getTime() - Date.now()) / 86400000);
+              return (
+                <Link
+                  key={ev.enquiry_id}
+                  href={`/admin/enquiries/${ev.enquiry_id}`}
+                  className="block px-4 py-3 hover:bg-[var(--color-ivory-100)] active:bg-[var(--color-ivory-200)] transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-body text-sm font-semibold text-[var(--color-brown-900)]">{ev.customer_name}</p>
+                      <p className="font-body text-xs text-[var(--color-brown-500)]">{ev.event_type ?? 'Event'}</p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-body text-sm font-bold text-[var(--color-brown-900)]">
+                        {new Date(ev.event_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
+                      <p className={`font-body text-[10px] ${daysUntil <= 3 ? 'text-red-500 font-semibold' : 'text-[var(--color-brown-400)]'}`}>
+                        {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `in ${daysUntil}d`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-body text-[var(--color-brown-600)]">
+                      {ev.total_amount > 0 ? fmt(ev.total_amount) : 'No invoice'}
+                    </span>
+                    {ev.balance_due > 0
+                      ? <span className="font-body font-semibold text-orange-600">Balance: {fmt(ev.balance_due)}</span>
+                      : ev.invoice_id
+                      ? <span className="font-body font-semibold text-green-600">✅ Cleared</span>
+                      : null}
+                    {ev.invoice_id && (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-body text-[10px] font-semibold border ${psColor}`}>
+                        {psLabel}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
