@@ -1,17 +1,22 @@
 // components/admin/StatusUpdater.tsx
-// Calls the server API route instead of updating Supabase directly from the browser.
-// The API route writes enquiry_status_history + audit_logs atomically.
+// Compact dropdown status selector — no overflow with 9 statuses.
+// Calls the server API route (writes enquiry_status_history + audit_logs).
 
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ENQUIRY_STATUSES, ENQUIRY_STATUS_LABELS, ENQUIRY_STATUS_COLORS, EnquiryStatus } from '@/types/enquiry';
+import { ChevronDown } from 'lucide-react';
+import {
+  ENQUIRY_STATUSES,
+  ENQUIRY_STATUS_LABELS,
+  ENQUIRY_STATUS_COLORS,
+  type EnquiryStatus,
+} from '@/types/enquiry';
 
 interface StatusUpdaterProps {
   enquiryId: string;
   currentStatus: EnquiryStatus;
-  /** Roles that are allowed to update status. UI hides buttons for VIEWER. */
   canEdit?: boolean;
 }
 
@@ -20,9 +25,9 @@ export default function StatusUpdater({
   currentStatus,
   canEdit = true,
 }: StatusUpdaterProps) {
-  const [status, setStatus] = useState<EnquiryStatus>(currentStatus);
+  const [status, setStatus]   = useState<EnquiryStatus>(currentStatus);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
   const router = useRouter();
 
   const handleChange = async (next: EnquiryStatus) => {
@@ -32,20 +37,19 @@ export default function StatusUpdater({
 
     try {
       const res = await fetch(`/api/admin/enquiries/${enquiryId}/status`, {
-        method: 'PATCH',
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: next }),
+        body:    JSON.stringify({ status: next }),
       });
 
       const json = await res.json();
-
       if (!res.ok) {
         setError(json.error ?? 'Failed to update status.');
         return;
       }
 
       setStatus(next);
-      router.refresh(); // re-fetch server component data (ActivityTimeline etc.)
+      router.refresh();
     } catch {
       setError('Network error — please try again.');
     } finally {
@@ -53,42 +57,52 @@ export default function StatusUpdater({
     }
   };
 
+  // Read-only badge for VIEWER
   if (!canEdit) {
-    // VIEWER: show read-only badge
     return (
-      <span
-        className={`inline-flex items-center px-3 py-1.5 rounded-full font-body text-xs font-semibold border ${ENQUIRY_STATUS_COLORS[status]}`}
-      >
+      <span className={`inline-flex items-center px-3 py-1.5 rounded-full font-body text-xs font-semibold border ${ENQUIRY_STATUS_COLORS[status]}`}>
         {ENQUIRY_STATUS_LABELS[status]}
       </span>
     );
   }
 
+  // Editable: compact dropdown — no overflow regardless of status count
   return (
-    <div>
-      <div className="flex flex-wrap gap-2">
-        {ENQUIRY_STATUSES.map((s) => (
-          <button
-            key={s}
-            id={`status-btn-${s}`}
-            disabled={loading}
-            onClick={() => handleChange(s)}
-            aria-pressed={status === s}
-            className={`px-4 py-2.5 rounded-full font-body text-xs font-semibold border transition-all min-h-[44px] ${
-              status === s
-                ? ENQUIRY_STATUS_COLORS[s] + ' ring-2 ring-offset-1 ring-current'
-                : 'bg-white text-[var(--color-brown-500)] border-[var(--color-ivory-300)] hover:bg-[var(--color-ivory-100)]'
-            } disabled:opacity-60 disabled:cursor-not-allowed`}
-          >
-            {loading && status !== s ? ENQUIRY_STATUS_LABELS[s] : ENQUIRY_STATUS_LABELS[s]}
-          </button>
-        ))}
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="relative inline-flex items-center">
+        {/* Colour dot */}
+        <span className={`absolute left-3 w-2 h-2 rounded-full pointer-events-none ${ENQUIRY_STATUS_COLORS[status].split(' ')[0].replace('bg-', 'bg-')}`} />
+
+        <select
+          value={status}
+          disabled={loading}
+          onChange={(e) => handleChange(e.target.value as EnquiryStatus)}
+          aria-label="Update enquiry status"
+          className={`
+            appearance-none pl-7 pr-8 py-2 rounded-full font-body text-xs font-semibold border
+            cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-current
+            disabled:opacity-60 disabled:cursor-not-allowed transition-colors
+            ${ENQUIRY_STATUS_COLORS[status]}
+          `}
+        >
+          {ENQUIRY_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {ENQUIRY_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+
+        <ChevronDown
+          size={12}
+          className="absolute right-3 pointer-events-none"
+        />
       </div>
+
       {loading && (
-        <p className="mt-2 font-body text-xs text-[var(--color-brown-400)]">Updating…</p>
+        <p className="font-body text-[10px] text-[var(--color-brown-400)] pl-1">Updating…</p>
       )}
       {error && (
-        <p className="mt-2 font-body text-xs text-red-600">{error}</p>
+        <p className="font-body text-[10px] text-red-600 pl-1">{error}</p>
       )}
     </div>
   );
