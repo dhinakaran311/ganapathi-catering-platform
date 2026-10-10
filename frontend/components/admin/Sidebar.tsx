@@ -21,6 +21,8 @@ import {
   Receipt,
   X,
   Shield,
+  CreditCard,
+  CalendarDays,
 } from 'lucide-react';
 import type { StaffRole } from '@/types/staff';
 
@@ -32,9 +34,11 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/admin/dashboard',  label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/admin/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
   { href: '/admin/enquiries',  label: 'Enquiries',  icon: ClipboardList },
   { href: '/admin/invoices',   label: 'Invoices',   icon: Receipt },
+  { href: '/admin/payments',   label: 'Payments',   icon: CreditCard },
+  { href: '/admin/events',     label: 'Events',     icon: CalendarDays },
   { href: '/admin/customers',  label: 'Customers',  icon: Users },
   { href: '/admin/reports',    label: 'Analytics',  icon: BarChart3 },
   { href: '/admin/reviews',    label: 'Reviews',    icon: Star },
