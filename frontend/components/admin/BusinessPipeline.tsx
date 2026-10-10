@@ -8,13 +8,14 @@ import { CheckCircle2, Circle, XCircle } from 'lucide-react';
 import type { EnquiryStatus } from '@/types/enquiry';
 
 const PIPELINE_STAGES: { status: EnquiryStatus; label: string }[] = [
-  { status: 'NEW',        label: 'New' },
-  { status: 'CONTACTED',  label: 'Contacted' },
-  { status: 'DISCUSSION', label: 'Discussion' },
-  { status: 'QUOTE_SENT', label: 'Quote Sent' },
-  { status: 'FOLLOW_UP',  label: 'Follow Up' },
-  { status: 'CONFIRMED',  label: 'Confirmed' },
-  { status: 'COMPLETED',  label: 'Completed' },
+  { status: 'NEW',             label: 'New' },
+  { status: 'CONTACTED',       label: 'Contacted' },
+  { status: 'DISCUSSION',      label: 'Discussion' },
+  { status: 'QUOTE_SENT',      label: 'Quote Sent' },
+  { status: 'FOLLOW_UP',       label: 'Follow Up' },
+  { status: 'CONFIRMED',       label: 'Confirmed' },
+  { status: 'EVENT_SCHEDULED', label: 'Scheduled' },
+  { status: 'COMPLETED',       label: 'Completed' },
 ];
 
 interface BusinessPipelineProps {

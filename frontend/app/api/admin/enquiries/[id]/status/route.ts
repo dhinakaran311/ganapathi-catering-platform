@@ -10,7 +10,7 @@ import type { EnquiryStatus } from '@/types/enquiry';
 
 const VALID_STATUSES: EnquiryStatus[] = [
   'NEW', 'CONTACTED', 'DISCUSSION', 'QUOTE_SENT',
-  'FOLLOW_UP', 'CONFIRMED', 'COMPLETED', 'CANCELLED',
+  'FOLLOW_UP', 'CONFIRMED', 'EVENT_SCHEDULED', 'COMPLETED', 'CANCELLED',
 ];
 
 export async function PATCH(
