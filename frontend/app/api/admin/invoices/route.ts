@@ -1,6 +1,66 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireMinRole, requireAnyRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
+import { invoiceCreateSchema, invoiceUpdateSchema, invoicePatchSchema } from '@/lib/validation';
+
+/* ── validation helper ── */
+function validationError(error: { issues: { path: PropertyKey[]; message: string }[] }) {
+  const details: Record<string, string> = {};
+  for (const issue of error.issues) {
+    const key = issue.path.join('.') || '_';
+    if (!details[key]) details[key] = issue.message;
+  }
+  return NextResponse.json({ error: 'Validation failed', details }, { status: 422 });
+}
+
+/* ── invoice state / permission rules (shared by PUT + PATCH) ──────────────
+   • CANCELLED invoices are immutable.
+   • Only OWNER/ADMIN may change status, except DRAFT → SENT (staff share).
+   • Re-sharing a non-draft invoice never downgrades its status to SENT
+     (the status change is dropped; sent_at is still recorded).
+   • Amounts of a PAID invoice can only be changed by OWNER/ADMIN.
+   Mutates `changes` (drops a no-op status) and returns an error response, or
+   null when the change is allowed. */
+const FINANCIAL_FIELDS = [
+  'subtotal', 'tax_amount', 'delivery_charge', 'discount_amount', 'total_amount', 'invoice_data',
+] as const;
+
+function enforceInvoiceRules(
+  existing: { status: string } | null,
+  changes: Record<string, unknown>,
+  role: string,
+): NextResponse | null {
+  if (!existing) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+
+  const isAdmin = role === 'OWNER' || role === 'ADMIN';
+
+  if (existing.status === 'CANCELLED') {
+    return NextResponse.json({ error: 'Cancelled invoices cannot be changed.' }, { status: 422 });
+  }
+
+  const nextStatus = changes.status as string | undefined;
+  if (nextStatus !== undefined && nextStatus !== existing.status) {
+    if (nextStatus === 'SENT') {
+      if (existing.status !== 'DRAFT') delete changes.status; // never downgrade
+    } else if (!isAdmin) {
+      return NextResponse.json(
+        { error: 'Only an Owner or Admin can change this invoice’s status.' },
+        { status: 403 }
+      );
+    }
+  } else if (nextStatus === existing.status) {
+    delete changes.status;
+  }
+
+  if (existing.status === 'PAID' && !isAdmin && FINANCIAL_FIELDS.some((f) => f in changes)) {
+    return NextResponse.json(
+      { error: 'This invoice is fully paid. Only an Owner or Admin can change its amounts.' },
+      { status: 403 }
+    );
+  }
+
+  return null;
+}
 
 /* ── audit helper ── */
 async function writeAudit(opts: {
@@ -47,7 +107,11 @@ export async function POST(req: NextRequest) {
 
   const supabase = createAdminClient();
   const user = auth.user;
-  const body = await req.json();
+  const raw = await req.json();
+
+  const parsedBody = invoiceCreateSchema.safeParse(raw);
+  if (!parsedBody.success) return validationError(parsedBody.error);
+  const body = parsedBody.data;
 
   const { data, error } = await supabase
     .from('invoices')
@@ -88,16 +152,21 @@ export async function PUT(req: NextRequest) {
 
   const supabase = createAdminClient();
   const user = auth.user;
-  const body = await req.json();
-  const { id, ...rest } = body;
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  const raw = await req.json();
 
-  // Fetch current invoice for audit diff
+  const parsedBody = invoiceUpdateSchema.safeParse(raw);
+  if (!parsedBody.success) return validationError(parsedBody.error);
+  const { id, ...rest } = parsedBody.data;
+
+  // Fetch current invoice for audit diff + state rules
   const { data: existing } = await supabase
     .from('invoices')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
+
+  const denied = enforceInvoiceRules(existing, rest as Record<string, unknown>, auth.role);
+  if (denied) return denied;
 
   const { data, error } = await supabase
     .from('invoices')
@@ -121,26 +190,31 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* PATCH /api/admin/invoices  — partial update; ADMIN+ for cancel (STAFF+ for send) */
+/* PATCH /api/admin/invoices  — partial update; ADMIN+ for status changes (STAFF+ may mark DRAFT → SENT) */
 export async function PATCH(req: NextRequest) {
   const auth = await requireMinRole('STAFF');
   if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
   const user = auth.user;
-  const body = await req.json();
-  const { id, ...patch } = body;
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  const raw = await req.json();
 
-  // Fetch current invoice for audit diff
+  const parsedBody = invoicePatchSchema.safeParse(raw);
+  if (!parsedBody.success) return validationError(parsedBody.error);
+  const { id, ...patch } = parsedBody.data;
+
+  // Fetch current invoice for audit diff + state rules
   const { data: existing } = await supabase
     .from('invoices')
     .select('*')
     .eq('id', id)
-    .single();
+    .maybeSingle();
 
-  // Normalise status to uppercase if provided
-  if (patch.status) patch.status = (patch.status as string).toUpperCase();
+  // Status is validated as an uppercase enum by invoicePatchSchema; these
+  // rules add who-may-change-what (e.g. STAFF cannot cancel via PATCH).
+  const denied = enforceInvoiceRules(existing, patch as Record<string, unknown>, auth.role);
+  if (denied) return denied;
+  if (Object.keys(patch).length === 0) return NextResponse.json(existing);
 
   const { data, error } = await supabase
     .from('invoices')

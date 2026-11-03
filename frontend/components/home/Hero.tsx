@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
+import { track } from '@/lib/analytics/track';
 
 export default function Hero() {
   const t = useTranslations('Hero');
@@ -30,7 +31,7 @@ export default function Hero() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto mt-2">
-            <a href="https://wa.me/919942351280" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-8 h-14 rounded-md font-body text-base font-semibold bg-[var(--color-green-800)] text-white transition-all hover:bg-[var(--color-green-900)] hover:-translate-y-px shadow-sm hover:shadow-md">
+            <a href="https://wa.me/919942351280" target="_blank" rel="noopener noreferrer" onClick={() => track({ event: 'whatsapp_open', metadata: { source: 'hero' } })} className="inline-flex items-center justify-center gap-2 px-8 h-14 rounded-md font-body text-base font-semibold bg-[var(--color-green-800)] text-white transition-all hover:bg-[var(--color-green-900)] hover:-translate-y-px shadow-sm hover:shadow-md">
               {t('whatsappBtn')}
             </a>
             <a href="#contact" className="inline-flex items-center justify-center gap-2 px-8 h-14 rounded-md font-body text-base font-semibold bg-transparent text-[var(--color-green-800)] border-2 border-[var(--color-green-800)] transition-all hover:bg-[var(--color-green-800)] hover:text-white">

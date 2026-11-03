@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextResponse } from 'next/server';
 import type { StaffRole } from '@/types/staff';
+import { getMfaStatus } from '@/lib/auth/mfa';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Core helpers
@@ -14,6 +15,10 @@ import type { StaffRole } from '@/types/staff';
 /**
  * Returns the current user and their role from the DB.
  * Returns null for both if not authenticated or no profile.
+ *
+ * A user who has 2FA enrolled but has NOT completed the TOTP challenge in this
+ * session is treated as unauthenticated (null), so every requireMinRole /
+ * requireAnyRole API guard also enforces 2FA.
  */
 export async function getCurrentUserWithRole(): Promise<{
   user: { id: string; email: string | undefined } | null;
@@ -23,6 +28,9 @@ export async function getCurrentUserWithRole(): Promise<{
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { user: null, role: null };
+
+  const mfa = await getMfaStatus(supabase, user);
+  if (!mfa.satisfied) return { user: null, role: null };
 
   // Fetch role from DB — never trust client-provided role
   const admin = createAdminClient();

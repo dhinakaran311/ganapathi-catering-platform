@@ -3,25 +3,78 @@
 // Called silently by Contact.tsx on every form submission
 // Uses the SERVICE ROLE key (server-side only) to bypass RLS — safe because
 // this is a Next.js API route, the key is never exposed to the browser.
+//
+// Input is validated with Zod (lib/validation.ts). Malformed payloads return
+// 422 with field-level error details; the WhatsApp flow on the client is
+// fire-and-forget so a validation failure never blocks the customer.
+
+//
+// Spam protection (Phase 1):
+//   • Honeypot: a hidden `website` field — if filled, we pretend success and
+//     save nothing (bots don't learn they were caught).
+//   • Rate limit: 5 per IP per 10 min, 3 per phone per hour (DB-backed).
+//   • Cloudflare Turnstile: enforced only when TURNSTILE_SECRET_KEY is set.
+// Errors returned to the browser are generic; details go to the server log.
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { enquirySchema } from '@/lib/validation';
+import { getClientIp, hashIdentifier, isHoneypotTripped } from '@/lib/security/request';
+import { checkRateLimits } from '@/lib/security/rate-limit';
+import { verifyTurnstile } from '@/lib/security/turnstile';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Validate required fields
-    const name = (body.name ?? '').trim();
-    const phone = (body.phone ?? '').trim();
-    if (!name || !phone) {
-      return NextResponse.json({ error: 'name and phone are required' }, { status: 400 });
+    // ── Honeypot ──────────────────────────────────────────────────────────
+    if (isHoneypotTripped(body?.website)) {
+      return NextResponse.json({ success: true }, { status: 201 });
+    }
+
+    // ── Validate with Zod ──────────────────────────────────────────────────
+    const parsed = enquirySchema.safeParse(body);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path.join('.') || '_';
+        if (!fieldErrors[key]) fieldErrors[key] = issue.message;
+      }
+      return NextResponse.json(
+        { error: 'Validation failed', details: fieldErrors },
+        { status: 422 }
+      );
+    }
+
+    const input = parsed.data;
+    const name = input.name;
+    const phone = input.phone;
+    const ip = getClientIp(req);
+
+    // ── Bot check (only when Turnstile keys are configured) ──────────────
+    if (!(await verifyTurnstile(input.turnstileToken, ip))) {
+      return NextResponse.json(
+        { error: 'Verification failed. Please refresh the page and try again.' },
+        { status: 403 }
+      );
+    }
+
+    // ── Rate limit ────────────────────────────────────────────────────────
+    const allowed = await checkRateLimits([
+      { bucket: `enquiry:ip:${hashIdentifier(ip)}`, limit: 5, windowSeconds: 600 },
+      { bucket: `enquiry:phone:${hashIdentifier(phone.replace(/\D/g, '').slice(-10))}`, limit: 3, windowSeconds: 3600 },
+    ]);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many enquiries. Please wait a little or message us on WhatsApp.' },
+        { status: 429 }
+      );
     }
 
     // Parse guest_count into min/max
     let guest_count_min: number | null = null;
     let guest_count_max: number | null = null;
-    const guests: string = body.guests ?? '';
+    const guests: string = input.guests ?? '';
     if (guests.includes('-')) {
       const [lo, hi] = guests.split('-').map((s: string) => parseInt(s.trim(), 10));
       guest_count_min = isNaN(lo) ? null : lo;
@@ -63,7 +116,7 @@ export async function POST(req: NextRequest) {
           })
           .select('id')
           .single();
-          
+
         if (newCustomer) {
           customerId = newCustomer.id;
         }
@@ -75,16 +128,16 @@ export async function POST(req: NextRequest) {
       phone,
       whatsapp: phone,
       customer_id: customerId,
-      event_type: body.event || null,
-      event_date: body.eventDate || null,
-      event_location: body.eventLocation || null,
+      event_type: input.event || null,
+      event_date: input.eventDate || null,
+      event_location: input.eventLocation || null,
       guest_count: guests || null,
       guest_count_min,
       guest_count_max,
-      food_type: body.foodType || null,
-      message: body.message || null,
-      custom_items: body.customItems
-        ? body.customItems.split(',').map((s: string) => s.trim()).filter(Boolean)
+      food_type: input.foodType || null,
+      message: input.message || null,
+      custom_items: input.customItems
+        ? input.customItems.split(',').map((s: string) => s.trim()).filter(Boolean)
         : null,
       status: 'NEW',
       source: 'form',
@@ -98,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('[enquiries API] Supabase insert error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: 'Could not save enquiry' }, { status: 500 });
     }
 
     return NextResponse.json(

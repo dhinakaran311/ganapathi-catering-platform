@@ -1,155 +1,192 @@
--- 015_fix_customer_relationships.sql
--- Fix customer → enquiry relationship to use customer_id instead of phone matching
--- Critical: Ensures data integrity and proper foreign key relationships
+-- Migration: Fix Customer Relationships (Version 2 - Corrected)
+-- Description: Properly rename customer_id_ref to customer_id, handling existing customer_id column
+-- Phase: 1 - Database Schema
+-- Dependencies: Requires migrations 007 (customers) and 003 (enquiries)
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- STEP 1: Rename customer_id_ref to customer_id (if exists)
--- ═══════════════════════════════════════════════════════════════════════════════
+-- ============================================================================
+-- PART 1: Drop old customer_id column (not used, no foreign key)
+-- ============================================================================
+
 DO $$
 BEGIN
-  -- Check if column is named customer_id_ref and rename to customer_id
+  -- Check if old customer_id exists and drop it
   IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_schema = 'public'
-      AND table_name = 'enquiries' 
-      AND column_name = 'customer_id_ref'
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'enquiries' 
+    AND column_name = 'customer_id'
+    AND NOT EXISTS (
+      SELECT 1 
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu 
+        ON tc.constraint_name = kcu.constraint_name
+      WHERE tc.table_name = 'enquiries'
+        AND kcu.column_name = 'customer_id'
+        AND tc.constraint_type = 'FOREIGN KEY'
+    )
   ) THEN
-    ALTER TABLE enquiries RENAME COLUMN customer_id_ref TO customer_id;
-    RAISE NOTICE 'Renamed customer_id_ref to customer_id';
+    RAISE NOTICE 'Dropping old customer_id column...';
+    ALTER TABLE enquiries DROP COLUMN IF EXISTS customer_id;
   END IF;
 END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- STEP 2: Ensure customer_id column exists with proper foreign key
--- ═══════════════════════════════════════════════════════════════════════════════
-ALTER TABLE enquiries 
-  ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
+-- ============================================================================
+-- PART 2: Rename customer_id_ref to customer_id
+-- ============================================================================
 
-COMMENT ON COLUMN enquiries.customer_id IS 
-  'Foreign key to customers table. This is the canonical relationship, NOT phone matching.';
+DO $$
+BEGIN
+  -- Now rename customer_id_ref to customer_id
+  IF EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'enquiries' 
+    AND column_name = 'customer_id_ref'
+  ) THEN
+    RAISE NOTICE 'Renaming customer_id_ref to customer_id...';
+    ALTER TABLE enquiries RENAME COLUMN customer_id_ref TO customer_id;
+    
+    -- Rename the foreign key constraint for clarity
+    ALTER TABLE enquiries 
+      RENAME CONSTRAINT enquiries_customer_id_ref_fkey 
+      TO enquiries_customer_id_fkey;
+  END IF;
+END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- STEP 3: Create index for efficient customer history queries
--- ═══════════════════════════════════════════════════════════════════════════════
-CREATE INDEX IF NOT EXISTS idx_enquiries_customer_id ON enquiries(customer_id);
+-- ============================================================================
+-- PART 3: Create helper function for phone normalization
+-- ============================================================================
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- STEP 4: Backfill customer_id based on phone normalization
--- WARNING: This uses phone matching to establish initial relationships
--- After this migration, phone should ONLY be used for customer discovery,
--- NOT for querying customer history
--- ═══════════════════════════════════════════════════════════════════════════════
-
--- Create phone normalization function for matching
-CREATE OR REPLACE FUNCTION normalize_phone(phone_number TEXT)
-RETURNS TEXT AS $$
+CREATE OR REPLACE FUNCTION normalize_phone(phone_input TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
 BEGIN
   -- Remove all non-numeric characters
-  RETURN regexp_replace(phone_number, '[^0-9]', '', 'g');
+  RETURN regexp_replace(phone_input, '[^0-9]', '', 'g');
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$;
 
--- Backfill customer_id for enquiries
+COMMENT ON FUNCTION normalize_phone IS 'Removes non-numeric characters from phone numbers for consistent matching';
+
+-- ============================================================================
+-- PART 4: Backfill customer_id for existing enquiries
+-- ============================================================================
+
+-- Create temporary function to backfill customer relationships
+CREATE OR REPLACE FUNCTION backfill_customer_relationships()
+RETURNS TABLE (
+  updated_count INTEGER,
+  unmatched_count INTEGER
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_updated INTEGER := 0;
+  v_unmatched INTEGER := 0;
+BEGIN
+  -- Update enquiries where customer_id is NULL but phone matches a customer
+  WITH matched_customers AS (
+    SELECT DISTINCT ON (normalize_phone(e.phone))
+      e.id AS enquiry_id,
+      c.id AS customer_id
+    FROM enquiries e
+    LEFT JOIN customers c 
+      ON normalize_phone(e.phone) = normalize_phone(c.phone)
+    WHERE e.customer_id IS NULL
+      AND c.id IS NOT NULL
+    ORDER BY normalize_phone(e.phone), c.created_at DESC
+  )
+  UPDATE enquiries e
+  SET customer_id = mc.customer_id
+  FROM matched_customers mc
+  WHERE e.id = mc.enquiry_id;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+  -- Count remaining enquiries without customer_id
+  SELECT COUNT(*)
+  INTO v_unmatched
+  FROM enquiries
+  WHERE customer_id IS NULL;
+
+  RETURN QUERY SELECT v_updated, v_unmatched;
+END;
+$$;
+
+-- Execute backfill
 DO $$
 DECLARE
-  matched_count INT := 0;
-  unmatched_count INT := 0;
-  ambiguous_count INT := 0;
-  rec RECORD;
-  customer_matches INT;
+  backfill_result RECORD;
 BEGIN
-  RAISE NOTICE '=== Starting customer_id backfill ===';
+  SELECT * INTO backfill_result FROM backfill_customer_relationships();
   
-  -- Loop through enquiries without customer_id
-  FOR rec IN 
-    SELECT id, phone, name
-    FROM enquiries
-    WHERE customer_id IS NULL
-      AND phone IS NOT NULL
-  LOOP
-    -- Count matching customers by normalized phone
-    SELECT COUNT(*) INTO customer_matches
-    FROM customers c
-    WHERE normalize_phone(c.phone) = normalize_phone(rec.phone);
-    
-    IF customer_matches = 1 THEN
-      -- Single match: safe to link
-      UPDATE enquiries e
-      SET customer_id = c.id
-      FROM customers c
-      WHERE e.id = rec.id
-        AND normalize_phone(c.phone) = normalize_phone(rec.phone);
-      
-      matched_count := matched_count + 1;
-      
-    ELSIF customer_matches > 1 THEN
-      -- Multiple customers with same phone: ambiguous
-      ambiguous_count := ambiguous_count + 1;
-      RAISE NOTICE 'Ambiguous match for enquiry % (phone: %) - % customers found', 
-        rec.id, rec.phone, customer_matches;
-      
-    ELSE
-      -- No matching customer
-      unmatched_count := unmatched_count + 1;
-    END IF;
-  END LOOP;
+  RAISE NOTICE 'Customer relationship backfill completed:';
+  RAISE NOTICE '  - Updated: % enquiries', backfill_result.updated_count;
+  RAISE NOTICE '  - Unmatched: % enquiries', backfill_result.unmatched_count;
   
-  RAISE NOTICE '=== Backfill complete ===';
-  RAISE NOTICE 'Matched and linked: % enquiries', matched_count;
-  RAISE NOTICE 'Ambiguous (multiple customers): % enquiries', ambiguous_count;
-  RAISE NOTICE 'No matching customer: % enquiries', unmatched_count;
-  
-  IF ambiguous_count > 0 THEN
-    RAISE NOTICE 'WARNING: % enquiries with ambiguous customer matches require manual review', ambiguous_count;
-  END IF;
-  
-  IF unmatched_count > 0 THEN
-    RAISE NOTICE 'INFO: % enquiries without matching customer (normal for new enquiries)', unmatched_count;
+  IF backfill_result.unmatched_count > 0 THEN
+    RAISE NOTICE 'Note: Unmatched enquiries will be linked when customers are created via API';
   END IF;
 END $$;
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- STEP 5: Create view for enquiries requiring manual customer assignment
--- ═══════════════════════════════════════════════════════════════════════════════
-CREATE OR REPLACE VIEW enquiries_without_customer AS
-SELECT 
-  e.id,
-  e.name,
-  e.phone,
-  e.event_type,
-  e.event_date,
-  e.created_at,
-  COUNT(c.id) as potential_customers
-FROM enquiries e
-LEFT JOIN customers c ON normalize_phone(e.phone) = normalize_phone(c.phone)
-WHERE e.customer_id IS NULL
-  AND e.phone IS NOT NULL
-GROUP BY e.id, e.name, e.phone, e.event_type, e.event_date, e.created_at
-ORDER BY e.created_at DESC;
+-- Drop temporary function
+DROP FUNCTION IF EXISTS backfill_customer_relationships();
 
-COMMENT ON VIEW enquiries_without_customer IS 
-  'Enquiries that need manual customer assignment. Review these periodically.';
+-- ============================================================================
+-- PART 5: Create index for performance
+-- ============================================================================
 
--- ═══════════════════════════════════════════════════════════════════════════════
--- STEP 6: Verification query
--- ═══════════════════════════════════════════════════════════════════════════════
+-- Create index on customer_id for faster joins
+CREATE INDEX IF NOT EXISTS idx_enquiries_customer_id 
+  ON enquiries(customer_id) 
+  WHERE customer_id IS NOT NULL;
+
+COMMENT ON INDEX idx_enquiries_customer_id IS 'Speeds up customer history queries and joins';
+
+-- ============================================================================
+-- PART 6: Update RLS policies to use customer_id
+-- ============================================================================
+
+-- Drop old policies if they exist
+DROP POLICY IF EXISTS "Customers can view their own enquiries" ON enquiries;
+
+-- Create new policy using customer_id
+CREATE POLICY "Customers can view their own enquiries"
+  ON enquiries
+  FOR SELECT
+  USING (
+    customer_id = auth.uid()
+    OR 
+    -- Fallback for enquiries without customer_id (legacy data)
+    (customer_id IS NULL AND phone IN (
+      SELECT phone FROM customers WHERE id = auth.uid()
+    ))
+  );
+
+COMMENT ON POLICY "Customers can view their own enquiries" ON enquiries IS 
+  'Allows customers to view their enquiries using customer_id foreign key';
+
+-- ============================================================================
+-- MIGRATION SUMMARY
+-- ============================================================================
+
 DO $$
-DECLARE
-  total_enquiries INT;
-  linked_enquiries INT;
-  link_percentage NUMERIC;
 BEGIN
-  SELECT COUNT(*) INTO total_enquiries FROM enquiries;
-  SELECT COUNT(*) INTO linked_enquiries FROM enquiries WHERE customer_id IS NOT NULL;
-  
-  IF total_enquiries > 0 THEN
-    link_percentage := ROUND((linked_enquiries::NUMERIC / total_enquiries::NUMERIC) * 100, 2);
-  ELSE
-    link_percentage := 0;
-  END IF;
-  
-  RAISE NOTICE '=== Customer Relationship Status ===';
-  RAISE NOTICE 'Total enquiries: %', total_enquiries;
-  RAISE NOTICE 'Linked to customers: % (% %%)', linked_enquiries, link_percentage;
-  RAISE NOTICE 'Unlinked: %', total_enquiries - linked_enquiries;
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'Migration 015 (v2) completed successfully';
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'Changes:';
+  RAISE NOTICE '  ✓ Dropped old customer_id column';
+  RAISE NOTICE '  ✓ Renamed customer_id_ref → customer_id';
+  RAISE NOTICE '  ✓ Created normalize_phone() helper function';
+  RAISE NOTICE '  ✓ Backfilled customer relationships';
+  RAISE NOTICE '  ✓ Created performance index';
+  RAISE NOTICE '  ✓ Updated RLS policies';
+  RAISE NOTICE '';
+  RAISE NOTICE 'Next steps:';
+  RAISE NOTICE '  → Apply migration 016 (atomic invoice numbering)';
+  RAISE NOTICE '  → Apply migration 017 (invoice soft delete)';
+  RAISE NOTICE '  → Apply migration 018 (audit event types)';
 END $$;

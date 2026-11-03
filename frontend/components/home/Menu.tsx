@@ -71,12 +71,6 @@ const FOOD_TYPE_DOT: Record<string, string> = {
   nonveg: 'bg-red-500',
 };
 
-const FOOD_TYPE_BG: Record<string, string> = {
-  veg:    'bg-green-50 text-green-700 border-green-200',
-  egg:    'bg-yellow-50 text-yellow-700 border-yellow-200',
-  nonveg: 'bg-red-50 text-red-700 border-red-200',
-};
-
 const FOOD_TYPE_LABEL: Record<string, string> = {
   veg:    'Veg',
   egg:    'Egg',
@@ -190,7 +184,7 @@ export default function Menu() {
 
         {/* Menu List — grouped by category */}
         <div className="space-y-8 mb-12">
-          {grouped.map(({ key, label, items }) => (
+          {grouped.map(({ key, items }) => (
             <div key={key}>
               {/* Category heading */}
               <div className="flex items-center gap-3 mb-4">

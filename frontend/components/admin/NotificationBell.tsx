@@ -1,9 +1,13 @@
 'use client';
 
 // components/admin/NotificationBell.tsx — E35: Real-time notification bell
+// Subscribes to INSERTs on the enquiries table (via Supabase Realtime) so new
+// enquiries show up live without a page refresh. Falls back to the static
+// initialNotifications when Realtime is unavailable.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface Notification {
   id: string;
@@ -20,6 +24,51 @@ interface NotificationBellProps {
 export default function NotificationBell({ initialNotifications = [] }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const [open, setOpen] = useState(false);
+
+  // E35: Live subscription to new enquiries.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel('admin-new-enquiries')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'enquiries' },
+        (payload) => {
+          const row = payload.new as { id?: string; name?: string; event_type?: string };
+          const notification: Notification = {
+            id: row.id ?? String(Date.now()),
+            title: 'New enquiry',
+            body: `${row.name ?? 'Customer'}${row.event_type ? ` · ${row.event_type}` : ''}`,
+            createdAt: new Date().toISOString(),
+            read: false,
+          };
+          setNotifications((prev) => [notification, ...prev].slice(0, 50));
+
+          // Respect the desktop-notification preference (see settings).
+          try {
+            const prefs = JSON.parse(localStorage.getItem('sgm_notification_prefs') ?? '{}');
+            if (prefs.desktop && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification('New enquiry', { body: notification.body });
+            }
+            if (prefs.sound) {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              osc.frequency.value = 880;
+              osc.connect(ctx.destination);
+              osc.start();
+              osc.stop(ctx.currentTime + 0.15);
+            }
+          } catch {
+            // notification/sound is best-effort only
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

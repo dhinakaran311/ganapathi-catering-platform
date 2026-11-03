@@ -10,22 +10,18 @@ const locales = ['ta', 'en'];
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
-  weight: ['400', '600', '700'],
-  style: ['normal', 'italic'],
   variable: '--font-display',
   display: 'swap',
 });
 
 const notoSans = Noto_Sans({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
   variable: '--font-body',
   display: 'swap',
 });
 
 const notoSansTamil = Noto_Sans_Tamil({
   subsets: ['tamil'],
-  weight: ['400', '500', '600', '700'],
   variable: '--font-tamil',
   display: 'swap',
 });
@@ -82,11 +78,15 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
+    // The public site is always rendered in the light palette. Its components
+    // are designed for light backgrounds (bg-white cards, text-white buttons),
+    // so following the OS dark preference produced unreadable contrast for
+    // dark-mode phone users. Dark mode remains available in the admin panel.
     <html
       lang={locale}
       dir="ltr"
+      data-theme="light"
       className={`${playfair.variable} ${notoSans.variable} ${notoSansTamil.variable}`}
-      suppressHydrationWarning
     >
       <body>
         <NextIntlClientProvider messages={messages}>

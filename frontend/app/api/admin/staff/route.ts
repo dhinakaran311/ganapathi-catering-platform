@@ -7,9 +7,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireMinRole, requireAnyRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
-import type { StaffRole } from '@/types/staff';
-
-const VALID_ROLES: StaffRole[] = ['OWNER', 'ADMIN', 'STAFF', 'VIEWER'];
+import { staffCreateSchema, staffUpdateSchema, zodFieldErrors } from '@/lib/validation';
 
 /* ── GET — list all staff ───────────────────────────────────────────────── */
 export async function GET() {
@@ -48,17 +46,14 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
-  const body = await req.json();
-
-  const { email, role, full_name } = body;
-
-  if (!email || !role) {
-    return NextResponse.json({ error: 'email and role are required' }, { status: 400 });
+  const parsed = staffCreateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: zodFieldErrors(parsed.error) },
+      { status: 422 }
+    );
   }
-
-  if (!VALID_ROLES.includes(role)) {
-    return NextResponse.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
-  }
+  const { email, role, full_name } = parsed.data;
 
   // OWNER protection: only existing OWNER can promote to OWNER
   // (redundant here since only OWNER can reach this endpoint, but explicit is better)
@@ -68,11 +63,15 @@ export async function POST(req: NextRequest) {
 
   // Find auth user by email
   const { data: userList } = await supabase.auth.admin.listUsers();
-  const targetUser = userList?.users?.find((u) => u.email === email);
+  const targetUser = userList?.users?.find((u) => u.email?.toLowerCase() === email);
 
   if (!targetUser) {
+    // Public sign-up is disabled (Phase 1), so the owner creates the login.
     return NextResponse.json(
-      { error: 'No Supabase auth account found for that email. User must sign up first.' },
+      {
+        error:
+          'No login exists for that email yet. Create it in Supabase → Authentication → Users → “Add user”, then add the role here.',
+      },
       { status: 404 }
     );
   }
@@ -119,12 +118,14 @@ export async function PATCH(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
-  const body = await req.json();
-  const { profile_id, role, full_name, is_active } = body;
-
-  if (!profile_id) {
-    return NextResponse.json({ error: 'profile_id is required' }, { status: 400 });
+  const parsed = staffUpdateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: zodFieldErrors(parsed.error) },
+      { status: 422 }
+    );
   }
+  const { profile_id, role, full_name, is_active } = parsed.data;
 
   // Fetch current profile for audit + protection
   const { data: current, error: fetchErr } = await supabase
@@ -137,8 +138,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
   }
 
-  // OWNER protection: cannot demote the last OWNER
-  if (current.role === 'OWNER' && role && role !== 'OWNER') {
+  // OWNER protection: cannot demote OR deactivate the last active OWNER
+  const removesOwner =
+    current.role === 'OWNER' &&
+    current.is_active &&
+    ((role !== undefined && role !== 'OWNER') || is_active === false);
+  if (removesOwner) {
     const { count } = await supabase
       .from('staff_profiles')
       .select('*', { count: 'exact', head: true })
@@ -147,7 +152,7 @@ export async function PATCH(req: NextRequest) {
 
     if ((count ?? 0) <= 1) {
       return NextResponse.json(
-        { error: 'Cannot demote the last OWNER. Promote another user first.' },
+        { error: 'Cannot demote or deactivate the last OWNER. Promote another user first.' },
         { status: 422 }
       );
     }

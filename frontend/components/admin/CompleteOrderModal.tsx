@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, X, AlertTriangle, IndianRupee, Loader2 } from 'lucide-react';
+import { CheckCircle2, X, AlertTriangle, Loader2 } from 'lucide-react';
 
 interface CompleteOrderPreview {
   enquiry_status:  string;
@@ -39,30 +39,45 @@ export default function CompleteOrderModal({
   onSuccess,
 }: CompleteOrderModalProps) {
   const router = useRouter();
-  const [preview, setPreview]     = useState<CompleteOrderPreview | null>(null);
-  const [loading, setLoading]     = useState(true);
+  // Single state for the preview fetch. Derived below instead of driving
+  // loading/error flags with synchronous setState() calls inside the effect
+  // (that pattern cascades renders — see react-hooks/set-state-in-effect).
+  type PreviewState =
+    | { status: 'loading' }
+    | { status: 'error'; message: string }
+    | { status: 'ready'; data: CompleteOrderPreview };
+  const [previewState, setPreviewState] = useState<PreviewState>({ status: 'loading' });
   const [completing, setCompleting] = useState(false);
   const [notes, setNotes]         = useState('');
   const [error, setError]         = useState('');
-  const [previewError, setPreviewError] = useState('');
 
   // Step 1: Fetch accurate financial preview from server
   useEffect(() => {
-    setLoading(true);
-    setPreviewError('');
+    let cancelled = false;
 
     fetch(`/api/admin/enquiries/${enquiryId}/complete`)
       .then((r) => r.json())
       .then((data) => {
-        if (data.error) {
-          setPreviewError(data.error);
-        } else {
-          setPreview(data as CompleteOrderPreview);
-        }
+        if (cancelled) return;
+        setPreviewState(
+          data.error
+            ? { status: 'error', message: data.error }
+            : { status: 'ready', data: data as CompleteOrderPreview }
+        );
       })
-      .catch(() => setPreviewError('Failed to load order details. Please try again.'))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (cancelled) return;
+        setPreviewState({ status: 'error', message: 'Failed to load order details. Please try again.' });
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [enquiryId]);
+
+  const loading = previewState.status === 'loading';
+  const preview = previewState.status === 'ready' ? previewState.data : null;
+  const previewError = previewState.status === 'error' ? previewState.message : '';
 
   // Step 2: Submit completion
   const handleComplete = async () => {

@@ -1,8 +1,11 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
-import { useState, useEffect, useCallback } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { generateWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
+import { track } from '@/lib/analytics/track';
+import TurnstileWidget from '@/components/shared/TurnstileWidget';
 
 interface ContactFormData {
   name: string;
@@ -32,9 +35,14 @@ const defaultForm: ContactFormData = {
 
 export default function Contact() {
   const t = useTranslations('Contact');
+  const locale = useLocale();
   const [formData, setFormData] = useState<ContactFormData>(defaultForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // Spam protection — kept out of formData so it is never saved to localStorage.
+  const [honeypot, setHoneypot] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const [turnstileKey, setTurnstileKey] = useState(0); // remount → fresh token
 
   // B11: Auto-save form to localStorage while filling
   useEffect(() => {
@@ -59,6 +67,9 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    // Analytics (fire-and-forget — never blocks the flow)
+    track({ event: 'enquiry_submit', metadata: { event_type: formData.event, food_type: formData.foodType } });
 
     // 1️⃣ Build WhatsApp message (always happens, even if DB save fails)
     const message = generateWhatsAppMessage({
@@ -89,6 +100,8 @@ export default function Contact() {
         foodType: formData.foodType,
         customItems: formData.customItems,
         message: formData.message,
+        website: honeypot,
+        turnstileToken: turnstileToken || undefined,
       }),
     }).catch((err) => {
       // Silently log — never surface errors to the customer
@@ -96,11 +109,14 @@ export default function Contact() {
     });
 
     // 3️⃣ Open WhatsApp immediately (don't wait for DB)
+    track({ event: 'whatsapp_open', metadata: { source: 'contact_form' } });
     window.open(whatsappUrl, '_blank');
 
     // 4️⃣ Clear form + show success popup
     localStorage.removeItem(FORM_STORAGE_KEY);
     setFormData(defaultForm);
+    setTurnstileToken('');
+    setTurnstileKey((k) => k + 1); // tokens are single-use
     setIsSubmitting(false);
     setShowSuccess(true);
     // Auto-close popup after 6 seconds
@@ -312,6 +328,18 @@ export default function Contact() {
                   />
                 </div>
 
+                {/* Honeypot — invisible to people and screen readers; bots fill it. */}
+                <div aria-hidden="true" className="absolute -left-[9999px] top-auto w-px h-px overflow-hidden">
+                  <label htmlFor="contact-website">Website</label>
+                  <input
+                    type="text" id="contact-website" name="website"
+                    tabIndex={-1} autoComplete="off"
+                    value={honeypot} onChange={(e) => setHoneypot(e.target.value)}
+                  />
+                </div>
+
+                <TurnstileWidget key={turnstileKey} onToken={setTurnstileToken} />
+
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -438,6 +466,12 @@ export default function Contact() {
             <p className="font-body text-sm text-[var(--color-brown-600)] text-center mb-6">
               WhatsApp opened on your device. Just hit send, and we will reply with a quote within 2 hours.
             </p>
+            <Link
+              href={`/${locale}/quote/success`}
+              className="block w-full text-center font-body text-sm font-semibold text-[var(--color-green-800)] hover:underline mb-3"
+            >
+              What happens next? →
+            </Link>
             <button
               onClick={() => setShowSuccess(false)}
               className="w-full h-12 rounded-lg font-body text-sm font-semibold bg-[var(--color-green-800)] text-white hover:bg-[var(--color-green-900)] transition-colors"

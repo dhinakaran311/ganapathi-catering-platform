@@ -8,7 +8,13 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
-  const q = req.nextUrl.searchParams.get('q');
+  // The search term is interpolated into a PostgREST or() filter, where `,`
+  // `(` `)` `.` `*` `%` and `\` have syntax meaning. Strip them so a search
+  // can't inject extra filter conditions.
+  const q = (req.nextUrl.searchParams.get('q') ?? '')
+    .replace(/[,().*%\\:"']/g, ' ')
+    .trim()
+    .slice(0, 80);
 
   let query = supabase
     .from('customers')

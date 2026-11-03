@@ -4,7 +4,7 @@
 // Displays the full payment history for an invoice with verify/reject actions.
 
 import { useState } from 'react';
-import { CheckCircle, XCircle, Clock, IndianRupee, Calendar, Hash } from 'lucide-react';
+import { CheckCircle, XCircle, IndianRupee, Calendar, Hash } from 'lucide-react';
 import {
   PAYMENT_TYPE_LABELS,
   PAYMENT_METHOD_LABELS,

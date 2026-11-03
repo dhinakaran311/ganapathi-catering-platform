@@ -8,6 +8,8 @@ import Story from '@/components/home/Story';
 import Menu from '@/components/home/Menu';
 import HowItWorks from '@/components/home/HowItWorks';
 import Pricing from '@/components/home/Pricing';
+import ReviewWidget from '@/components/home/ReviewWidget';
+import ServiceAreaCheckerSection from '@/components/home/ServiceAreaCheckerSection';
 import Contact from '@/components/home/Contact';
 
 export default function Home() {
@@ -21,6 +23,8 @@ export default function Home() {
         <Menu />
         <HowItWorks />
         <Pricing />
+        <ReviewWidget />
+        <ServiceAreaCheckerSection />
         <Contact />
       </main>
       <Footer />

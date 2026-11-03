@@ -1,0 +1,189 @@
+/* =============================================================================
+   app/admin-dark.css — A3: Admin panel dark mode
+   -----------------------------------------------------------------------------
+   Imported ONLY by app/admin/(panel)/layout.tsx and active only when
+   <html data-theme="dark"> (set by the ThemeToggle). The public site and the
+   login page never load or trigger these rules.
+
+   Strategy
+   --------
+   1. NEUTRALS are remapped (ivory = surfaces, brown = text) so every
+      var(--color-ivory-*) / var(--color-brown-*) reference turns dark/light.
+   2. BRAND colours (green-600..900, gold-500..800) are NOT remapped. They are
+      used mostly as *backgrounds* with white text (sidebar, buttons, avatars,
+      icon chips) and must stay deep. Where they are used as *text* on a now
+      dark surface, a class-level override lifts them to a readable tint.
+   3. LIGHT TINTS (…-50/100/200) used for badges, alerts and chips become
+      translucent colour washes that work on both page and card surfaces.
+   4. HARDCODED utilities (bg-white, text-red-700, …) get class-level
+      overrides. Tailwind compiles some of these to literal values, so a token
+      remap alone cannot reach them.
+
+   This file is deliberately UNLAYERED so it wins over Tailwind's layered
+   utilities. Overrides that could fight a hover utility are written with
+   :not(:hover) so existing hover states keep working.
+   ============================================================================= */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ── Surfaces ─────────────────────────────────────────────────────────── */
+  --dk-page:        #12100D;
+  --dk-card:        #1C1915;
+  --dk-card-hover:  #25211B;
+
+  --color-ivory-50:  #1A1713;
+  --color-ivory-100: #211D18;
+  --color-ivory-200: #12100D;   /* page background + subtle dividers */
+  --color-ivory-300: #2F2922;   /* borders, table headers            */
+  --color-ivory-400: #3E362D;
+
+  /* ── Text (brown scale inverted: 900 = strongest) ─────────────────────── */
+  --color-brown-900: #F2ECE3;
+  --color-brown-800: #E6DDCF;
+  --color-brown-700: #D3C6B3;
+  --color-brown-600: #BCAD98;
+  --color-brown-500: #A3937E;
+  --color-brown-400: #8C7D6A;
+  --color-brown-300: #6E6152;
+
+  /* ── Brand tints → translucent washes ─────────────────────────────────── */
+  --color-green-50:  rgba(98, 170, 104, 0.10);
+  --color-green-100: rgba(98, 170, 104, 0.16);
+  --color-green-200: rgba(98, 170, 104, 0.30);
+  --color-gold-50:   rgba(214, 166, 46, 0.10);
+  --color-gold-100:  rgba(214, 166, 46, 0.16);
+  --color-gold-200:  rgba(214, 166, 46, 0.30);
+
+  /* ── Tailwind default-palette tints (used only as backgrounds/borders) ── */
+  --color-red-50:     rgba(239, 68, 68, 0.10);
+  --color-red-100:    rgba(239, 68, 68, 0.16);
+  --color-red-200:    rgba(239, 68, 68, 0.30);
+  --color-red-300:    rgba(239, 68, 68, 0.45);
+  --color-orange-50:  rgba(249, 115, 22, 0.10);
+  --color-orange-100: rgba(249, 115, 22, 0.16);
+  --color-orange-200: rgba(249, 115, 22, 0.30);
+  --color-orange-300: rgba(249, 115, 22, 0.45);
+  --color-yellow-50:  rgba(234, 179, 8, 0.10);
+  --color-yellow-100: rgba(234, 179, 8, 0.16);
+  --color-yellow-200: rgba(234, 179, 8, 0.30);
+  --color-blue-50:    rgba(59, 130, 246, 0.10);
+  --color-blue-100:   rgba(59, 130, 246, 0.16);
+  --color-blue-200:   rgba(59, 130, 246, 0.30);
+  --color-purple-50:  rgba(168, 85, 247, 0.10);
+  --color-purple-100: rgba(168, 85, 247, 0.18);
+  --color-purple-200: rgba(168, 85, 247, 0.32);
+  --color-indigo-100: rgba(99, 102, 241, 0.18);
+  --color-indigo-200: rgba(99, 102, 241, 0.32);
+  --color-teal-100:   rgba(20, 184, 166, 0.16);
+  --color-teal-200:   rgba(20, 184, 166, 0.30);
+  --color-gray-100:   rgba(255, 255, 255, 0.06);
+  --color-gray-200:   rgba(255, 255, 255, 0.12);
+
+  --background: var(--dk-page);
+  --foreground: var(--color-brown-900);
+}
+
+/* ── White surfaces (cards, topbar, footer, inputs, modals) ─────────────── */
+:root[data-theme="dark"] [class~="bg-white"]:not([class*="hover:bg-"]),
+:root[data-theme="dark"] [class~="bg-white"]:not(:hover) {
+  background-color: var(--dk-card);
+}
+:root[data-theme="dark"] [class~="hover:bg-white"]:hover {
+  background-color: var(--dk-card-hover);
+}
+
+/* Brand-named tint utilities are compiled to literal light values. */
+:root[data-theme="dark"] [class~="bg-green-50"]:not([class*="hover:bg-"]),
+:root[data-theme="dark"] [class~="bg-green-50"]:not(:hover) {
+  background-color: var(--color-green-50);
+}
+:root[data-theme="dark"] [class~="bg-green-100"]:not([class*="hover:bg-"]),
+:root[data-theme="dark"] [class~="bg-green-100"]:not(:hover) {
+  background-color: var(--color-green-100);
+}
+:root[data-theme="dark"] [class~="hover:bg-green-100"]:hover {
+  background-color: var(--color-green-200);
+}
+
+/* ── Brand colours used as TEXT → lighter, readable tints ───────────────── */
+:root[data-theme="dark"] :is(
+  [class~="text-[var(--color-green-600)]"],
+  [class~="text-[var(--color-green-700)]"],
+  [class~="text-[var(--color-green-800)]"],
+  [class~="text-green-600"],
+  [class~="text-green-700"],
+  [class~="text-green-800"]
+):not([class*="hover:text-"]),
+:root[data-theme="dark"] :is(
+  [class~="text-[var(--color-green-600)]"],
+  [class~="text-[var(--color-green-700)]"],
+  [class~="text-[var(--color-green-800)]"],
+  [class~="text-green-600"],
+  [class~="text-green-700"],
+  [class~="text-green-800"]
+):not(:hover) {
+  color: #93CF96;
+}
+:root[data-theme="dark"] [class~="text-[var(--color-green-900)]"]:not([class*="hover:text-"]),
+:root[data-theme="dark"] [class~="text-[var(--color-green-900)]"]:not(:hover) {
+  color: #B9E2BB;
+}
+:root[data-theme="dark"] :is(
+  [class~="hover:text-[var(--color-green-700)]"],
+  [class~="hover:text-[var(--color-green-800)]"],
+  [class~="hover:text-[var(--color-green-900)]"]
+):hover {
+  color: #CDEBCE;
+}
+:root[data-theme="dark"] [class~="text-[var(--color-gold-600)]"] { color: #E2B84A; }
+:root[data-theme="dark"] [class~="text-[var(--color-gold-700)]"] { color: #E8C467; }
+
+/* ── Status / badge / alert text colours ────────────────────────────────── */
+:root[data-theme="dark"] :is([class~="text-red-400"], [class~="text-red-500"]) { color: #F87171; }
+:root[data-theme="dark"] :is([class~="text-red-600"], [class~="text-red-700"]):not([class*="hover:text-"]),
+:root[data-theme="dark"] :is([class~="text-red-600"], [class~="text-red-700"]):not(:hover) { color: #FCA5A5; }
+:root[data-theme="dark"] [class~="text-red-800"]    { color: #FECACA; }
+:root[data-theme="dark"] [class~="hover:text-red-600"]:hover { color: #FECACA; }
+
+:root[data-theme="dark"] [class~="text-orange-500"] { color: #FB923C; }
+:root[data-theme="dark"] :is([class~="text-orange-600"], [class~="text-orange-700"]) { color: #FDBA74; }
+:root[data-theme="dark"] [class~="text-orange-800"] { color: #FED7AA; }
+
+:root[data-theme="dark"] :is([class~="text-yellow-600"], [class~="text-yellow-700"]) { color: #FDE047; }
+:root[data-theme="dark"] [class~="text-yellow-800"] { color: #FDE68A; }
+
+:root[data-theme="dark"] [class~="text-blue-500"]   { color: #60A5FA; }
+:root[data-theme="dark"] :is([class~="text-blue-600"], [class~="text-blue-700"]) { color: #93C5FD; }
+:root[data-theme="dark"] [class~="text-blue-800"]   { color: #BFDBFE; }
+
+:root[data-theme="dark"] :is([class~="text-purple-600"], [class~="text-purple-700"]) { color: #D8B4FE; }
+:root[data-theme="dark"] [class~="text-purple-800"] { color: #E9D5FF; }
+:root[data-theme="dark"] [class~="text-indigo-800"] { color: #C7D2FE; }
+:root[data-theme="dark"] [class~="text-teal-800"]   { color: #99F6E4; }
+
+:root[data-theme="dark"] [class~="text-gray-400"]   { color: #8C7D6A; }
+:root[data-theme="dark"] [class~="text-gray-600"]   { color: #C9C0B4; }
+:root[data-theme="dark"] [class~="text-gray-800"]   { color: #EDE6DC; }
+
+/* ── Focus rings: brand green is too dark to see on dark surfaces ───────── */
+:root[data-theme="dark"] :is(
+  [class~="focus:ring-[var(--color-green-800)]"],
+  [class~="focus:ring-[var(--color-green-700)]"]
+):focus {
+  --tw-ring-color: #6FB574;
+}
+
+/* ── WhatsApp message preview (InvoiceBuilder) → WhatsApp's own dark look ─ */
+:root[data-theme="dark"] [class~="bg-[#ECE5DD]"] {
+  background-color: #0B141A;
+  border-color: #233138;
+}
+:root[data-theme="dark"] [class~="bg-[#ECE5DD]"] [class~="bg-white"] {
+  background-color: #1F2C34;
+}
+
+/* ── Elevation: soft light shadows vanish on dark; use a subtle outline ─── */
+:root[data-theme="dark"] :is([class~="shadow-sm"], [class~="shadow-md"], [class~="shadow-lg"], [class~="shadow-xl"]) {
+  --tw-shadow-color: rgba(0, 0, 0, 0.5);
+}

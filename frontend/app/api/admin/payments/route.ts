@@ -8,10 +8,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireMinRole, requireAnyRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
-import type { PaymentType, PaymentMethodType, PaymentStatusType } from '@/types/payment';
-
-const VALID_TYPES:    PaymentType[]         = ['ADVANCE', 'PARTIAL', 'FINAL', 'OTHER'];
-const VALID_METHODS:  PaymentMethodType[]   = ['UPI', 'CASH', 'BANK_TRANSFER', 'CHEQUE', 'OTHER'];
+import type { PaymentStatusType } from '@/types/payment';
+import { paymentCreateSchema, paymentActionSchema, zodFieldErrors } from '@/lib/validation';
 
 /* ── audit helper ── */
 async function writeAudit(opts: {
@@ -65,28 +63,19 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
-  const body = await req.json();
   const user = auth.user;
 
-  /* ── validation ── */
-  const { invoice_id, amount, payment_type, payment_method } = body;
-
-  if (!invoice_id) {
-    return NextResponse.json({ error: 'invoice_id is required' }, { status: 400 });
+  /* ── validation (Zod) ── */
+  const parsed = paymentCreateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: zodFieldErrors(parsed.error) },
+      { status: 422 }
+    );
   }
-
-  const parsedAmount = Number(amount);
-  if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
-    return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 });
-  }
-
-  if (!VALID_TYPES.includes(payment_type)) {
-    return NextResponse.json({ error: `payment_type must be one of: ${VALID_TYPES.join(', ')}` }, { status: 400 });
-  }
-
-  if (!VALID_METHODS.includes(payment_method)) {
-    return NextResponse.json({ error: `payment_method must be one of: ${VALID_METHODS.join(', ')}` }, { status: 400 });
-  }
+  const body = parsed.data;
+  const { invoice_id, payment_type, payment_method } = body;
+  const parsedAmount = body.amount;
 
   /* ── verify invoice exists (server-side) and pull relationships ── */
   const { data: invoice, error: invErr } = await supabase
@@ -167,12 +156,15 @@ export async function PATCH(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const supabase = createAdminClient();
-  const body = await req.json();
-  const { id, action, rejection_reason } = body;
+  const parsed = paymentActionSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: zodFieldErrors(parsed.error) },
+      { status: 422 }
+    );
+  }
+  const { id, action, rejection_reason } = parsed.data;
   const user = auth.user;
-
-  if (!id)     return NextResponse.json({ error: 'id is required' }, { status: 400 });
-  if (!action) return NextResponse.json({ error: 'action is required (verify | reject)' }, { status: 400 });
 
   /* fetch existing payment for audit */
   const { data: existing } = await supabase

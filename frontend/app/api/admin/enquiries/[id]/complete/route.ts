@@ -13,6 +13,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireAnyRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
+import { completeOrderSchema, zodFieldErrors } from '@/lib/validation';
 
 export async function POST(
   req: NextRequest,
@@ -23,8 +24,14 @@ export async function POST(
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
-  const body = await req.json().catch(() => ({}));
-  const notes: string | null = body.notes ?? null;
+  const parsed = completeOrderSchema.safeParse(await req.json().catch(() => ({})));
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: zodFieldErrors(parsed.error) },
+      { status: 422 }
+    );
+  }
+  const notes: string | null = parsed.data.notes ?? null;
 
   const supabase = createAdminClient();
 

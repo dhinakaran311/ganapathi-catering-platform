@@ -39,12 +39,27 @@
   :root {
     --background: var(--color-ivory-200);
     --foreground: var(--color-brown-900);
+    /* Native controls (date picker, selects, scrollbars) follow the palette. */
+    color-scheme: light;
+
+    /* Intermediate shades referenced by components via var(--color-*) that
+       were never defined (so those texts/borders silently fell back to the
+       inherited colour). Defined here — not in @theme — so no new utilities
+       are generated and Tailwind's default palette is left untouched. */
+    --color-brown-600: #54402E;
+    --color-brown-400: #8A7560;
+    --color-gold-400:  #D9AE3A;
+    --color-gold-300:  #EACB72;
+    --color-ivory-50:  #FFFEFB;
   }
 
   html {
     overflow-x: hidden;
     max-width: 100vw;
   }
+
+  /* Dark mode is admin-only and lives in app/admin-dark.css (imported by the
+     admin panel layout). The public site and login page are always light. */
 
   body {
     background-color: var(--background);
