@@ -1,11 +1,13 @@
 'use client';
 
-// components/home/Menu.tsx — Full menu (#menu).
-// Same dishes and the same meal / veg filters as before, presented as a
-// printed bilingual menu: the visitor's language first, the other beneath,
-// with the standard Indian veg / egg / non-veg marks.
+// components/home/Menu.tsx — Full menu (#menu) as a carousel.
+// Same dishes and the same veg / non-veg filter as before. Each meal is a slide
+// (photo + bilingual two-column dish list with the standard Indian veg / egg /
+// non-veg marks). Meal tabs jump to their slide and follow the scroll;
+// arrows, swipe, trackpad and keyboard scrolling all work (native scroll-snap).
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { track } from '@/lib/analytics/track';
@@ -15,6 +17,7 @@ import Reveal from '@/components/site/Reveal';
 
 type Category = 'all' | 'breakfast' | 'lunch' | 'dinner' | 'snacks' | 'special';
 type FoodFilter = 'all' | 'veg' | 'nonveg';
+type MealCategory = Exclude<Category, 'all'>;
 
 interface MenuItem {
   id: number;
@@ -75,95 +78,175 @@ const MENU_ITEMS: MenuItem[] = [
   { id: 42, nameEn: 'Chettinad Chicken Gravy', nameTa: 'செட்டிநாடு சிக்கன் கிரேவி', category: 'special', foodType: 'nonveg', isSignature: true },
 ];
 
-const CATEGORY_ORDER: Exclude<Category, 'all'>[] = ['breakfast', 'lunch', 'dinner', 'snacks', 'special'];
+const CATEGORY_ORDER: MealCategory[] = ['breakfast', 'lunch', 'dinner', 'snacks', 'special'];
+
+// One photo per meal slide (all bundled in /public/images).
+const CATEGORY_PHOTO: Record<MealCategory, string> = {
+  breakfast: '/images/food/breakfast/idly.jpg',
+  lunch: '/images/events/banana-leaf.jpg',
+  dinner: '/images/menu-tiffin.png',
+  snacks: '/images/food/breakfast/pongal.jpg',
+  special: '/images/food/special/country-chicken.jpg',
+};
 
 export default function Menu() {
   const t = useTranslations('Menu');
   const s = useTranslations('Site.menu');
   const locale = useLocale();
-  const [activeCategory, setActiveCategory] = useState<Category>('all');
+  const [activeCategory, setActiveCategory] = useState<MealCategory>('breakfast');
   const [activeFood, setActiveFood] = useState<FoodFilter>('all');
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const tabRowRef = useRef<HTMLDivElement>(null);
+  const slideRefs = useRef<Partial<Record<MealCategory, HTMLElement | null>>>({});
 
-  const categories: { key: Category; label: string }[] = [
-    { key: 'all', label: s('all') },
-    ...CATEGORY_ORDER.map((key) => ({ key, label: s(key) })),
-  ];
+  // Keep the active meal tab visible in the (horizontally scrollable) tab
+  // row on phones. Scrolls the row only — never the page.
+  useEffect(() => {
+    const row = tabRowRef.current;
+    const tab = row?.querySelector<HTMLElement>(`[aria-controls="menu-slide-${activeCategory}"]`);
+    if (!row || !tab) return;
+    const left = tab.offsetLeft; // row is position:relative → offset is row-relative
+    if (left < row.scrollLeft || left + tab.offsetWidth > row.scrollLeft + row.clientWidth) {
+      row.scrollTo({ left: Math.max(0, left - 16), behavior: 'smooth' });
+    }
+  }, [activeCategory]);
+
   const foodFilters: { key: FoodFilter; label: string }[] = [
     { key: 'all', label: s('filterAll') },
     { key: 'veg', label: s('filterVeg') },
     { key: 'nonveg', label: s('filterNonveg') },
   ];
 
-  const filtered = MENU_ITEMS.filter((item) => {
-    const catMatch = activeCategory === 'all' || item.category === activeCategory;
-    const typeMatch =
+  const filtered = MENU_ITEMS.filter(
+    (item) =>
       activeFood === 'all' ||
       (activeFood === 'veg' && item.foodType === 'veg') ||
-      (activeFood === 'nonveg' && item.foodType === 'nonveg');
-    return catMatch && typeMatch;
-  });
+      (activeFood === 'nonveg' && item.foodType === 'nonveg')
+  );
 
   const grouped = CATEGORY_ORDER
     .map((key) => ({ key, items: filtered.filter((i) => i.category === key) }))
     .filter((g) => g.items.length > 0);
 
-  const pick = <T extends string>(setter: (v: T) => void, value: T, kind: string) => {
-    setter(value);
-    track({ event: 'menu_filter', metadata: { [kind]: value } });
-  };
-
   const markLabel = { veg: s('veg'), egg: s('egg'), nonveg: s('nonveg') };
 
-  const filterBtn = (active: boolean) =>
-    `min-h-[44px] px-1 text-[1rem] font-semibold transition-colors underline-offset-[10px] decoration-[3px] ${
+  // ── Carousel state: which slide is in view + whether arrows are usable ──
+  const syncFromScroll = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const atEndNow = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4;
+    setAtStart(el.scrollLeft <= 4);
+    setAtEnd(atEndNow);
+
+    const present = CATEGORY_ORDER.filter((key) => slideRefs.current[key]?.isConnected);
+    if (present.length === 0) return;
+
+    // Fully scrolled to the end: the last slide can't reach the snap start,
+    // so treat it as the active one.
+    if (atEndNow && el.scrollLeft > 4) {
+      setActiveCategory(present[present.length - 1]);
+      return;
+    }
+
+    // Otherwise the slide whose left edge is nearest the snap start is active.
+    const start = el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).scrollPaddingLeft || '0');
+    let best: MealCategory = present[0];
+    let bestDist = Infinity;
+    for (const key of present) {
+      const d = Math.abs(slideRefs.current[key]!.getBoundingClientRect().left - start);
+      if (d < bestDist) { bestDist = d; best = key; }
+    }
+    setActiveCategory(best);
+  }, []);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(syncFromScroll);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [syncFromScroll, activeFood]);
+
+  const reducedMotion = () =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const scrollToSlide = (key: MealCategory) => {
+    const el = trackRef.current;
+    const slide = slideRefs.current[key];
+    if (!el || !slide) return;
+    const pad = parseFloat(getComputedStyle(el).scrollPaddingLeft || '0');
+    el.scrollTo({ left: slide.offsetLeft - pad, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  };
+
+  const goToCategory = (key: MealCategory) => {
+    setActiveCategory(key);
+    scrollToSlide(key);
+    track({ event: 'menu_filter', metadata: { category: key } });
+  };
+
+  const step = (dir: 1 | -1) => {
+    const keys = grouped.map((g) => g.key);
+    const i = Math.max(0, keys.indexOf(activeCategory));
+    const next = keys[Math.min(keys.length - 1, Math.max(0, i + dir))];
+    if (next) scrollToSlide(next);
+  };
+
+  const pickFood = (value: FoodFilter) => {
+    setActiveFood(value);
+    track({ event: 'menu_filter', metadata: { food: value } });
+    // A filter can remove slides — return to the first one.
+    requestAnimationFrame(() => trackRef.current?.scrollTo({ left: 0 }));
+  };
+
+  const textBtn = (active: boolean) =>
+    `min-h-[44px] whitespace-nowrap px-1 text-[1rem] font-semibold transition-colors underline-offset-[10px] decoration-[3px] ${
       active
         ? 'text-[var(--site-leaf-deep)] underline decoration-[var(--site-brass)]'
         : 'text-[var(--site-ink-muted)] hover:text-[var(--site-leaf-deep)]'
     }`;
 
+  const arrowBtn =
+    'grid h-12 w-12 flex-none place-items-center rounded-full bg-[var(--site-leaf)] text-[var(--site-on-dark)] transition-colors hover:bg-[var(--site-leaf-deep)] disabled:bg-[var(--site-paper-deep)] disabled:text-[var(--site-ink-muted)] disabled:cursor-not-allowed';
+
   return (
-    <section id="menu" aria-labelledby="menu-title" className="s-section">
+    <section id="menu" aria-labelledby="menu-title" className="s-section overflow-hidden">
       <div className="s-container">
-        <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
-          {/* Left: title, filters, photos */}
-          <div className="lg:sticky lg:top-[calc(var(--site-header)+32px)] lg:self-start">
-            <Reveal>
-              <h2 id="menu-title" className="s-h2 whitespace-pre-line text-[var(--site-leaf-deep)]">
-                {t('heading')}
-              </h2>
-              <p className="s-lead mt-5">{t('subheading')}</p>
-            </Reveal>
+        {/* Heading + food-type filter */}
+        <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
+          <Reveal>
+            <h2 id="menu-title" className="s-h2 whitespace-pre-line text-[var(--site-leaf-deep)]">
+              {t('heading')}
+            </h2>
+            <p className="s-lead mt-5">{t('subheading')}</p>
+          </Reveal>
 
-            <div className="mt-9 space-y-5">
-              <div role="group" aria-label={s('categoriesLabel')} className="flex flex-wrap gap-x-5 gap-y-1">
-                {categories.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={activeCategory === key}
-                    onClick={() => pick(setActiveCategory, key, 'category')}
-                    className={filterBtn(activeCategory === key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div role="group" aria-label={s('filterLabel')} className="flex flex-wrap gap-x-5 gap-y-1">
-                {foodFilters.map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={activeFood === key}
-                    onClick={() => pick(setActiveFood, key, 'food')}
-                    className={filterBtn(activeFood === key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-3">
+            <div role="group" aria-label={s('filterLabel')} className="flex flex-wrap gap-x-5">
+              {foodFilters.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={activeFood === key}
+                  onClick={() => pickFood(key)}
+                  className={textBtn(activeFood === key)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-
-            <ul className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-[0.9rem] text-[var(--site-ink-soft)]">
+            <ul className="flex flex-wrap gap-x-5 gap-y-1 text-[0.88rem] text-[var(--site-ink-soft)]">
               {(['veg', 'egg', 'nonveg'] as const).map((k) => (
                 <li key={k} className="flex items-center gap-2">
                   <span className={`s-mark s-mark-${k}`} aria-hidden="true" />
@@ -171,76 +254,140 @@ export default function Menu() {
                 </li>
               ))}
             </ul>
-
-            <div className="mt-10 hidden grid-cols-2 gap-4 lg:grid">
-              <div className="s-arch relative aspect-[3/4]">
-                <Image src="/images/menu-tiffin.png" alt={s('photoTiffin')} fill sizes="240px" className="object-cover" />
-              </div>
-              <div className="s-arch relative mt-10 aspect-[3/4]">
-                <Image src="/images/food/special/country-chicken.jpg" alt={s('photoSpecial')} fill sizes="240px" className="object-cover" />
-              </div>
-            </div>
           </div>
+        </div>
 
-          {/* Right: the printed menu */}
-          <div aria-live="polite">
-            {grouped.length === 0 && (
-              <p className="text-[1.05rem] text-[var(--site-ink-soft)]">{s('empty')}</p>
-            )}
-
-            <div className="space-y-14">
-              {grouped.map(({ key, items }) => (
-                <div key={key}>
-                  <h3 className="s-h3 text-[var(--site-brass-text)]">{t(`categories.${key}`)}</h3>
-                  <ul className="mt-5 grid grid-cols-2 gap-x-5 sm:gap-x-10">
-                    {items.map((item) => {
-                      const primary = locale === 'ta' ? item.nameTa : item.nameEn;
-                      const secondary = locale === 'ta' ? item.nameEn : item.nameTa;
-                      return (
-                        <li key={item.id} className="flex items-start gap-2.5 py-2.5 sm:gap-3.5 sm:py-3">
-                          <span
-                            className={`s-mark s-mark-${item.foodType} mt-[0.42em]`}
-                            role="img"
-                            aria-label={markLabel[item.foodType]}
-                          />
-                          <span className="min-w-0">
-                            <span className="s-serif block text-[1.05rem] font-medium leading-snug sm:text-[1.22rem] text-[var(--site-ink)]">
-                              {primary}
-                              {item.isSignature && (
-                                <span className="ml-2 align-middle text-[0.8rem] font-semibold italic text-[var(--site-chilli)]">
-                                  {s('signature')}
-                                </span>
-                              )}
-                            </span>
-                            <span className="block text-[0.88rem] text-[var(--site-ink-muted)]" lang={locale === 'ta' ? 'en' : 'ta'}>
-                              {secondary}
-                            </span>
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-16 rounded-3xl bg-[var(--site-paper-deep)] p-7 md:p-9">
-              <p className="s-serif text-[1.35rem] font-medium leading-snug text-[var(--site-leaf-deep)]">
-                {t('fullMenuText')}
-              </p>
-              <p className="mt-2 text-[0.95rem] text-[var(--site-ink-soft)]">{t('pricingNote')}</p>
-              <a
-                href={SITE.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => track({ event: 'whatsapp_open', metadata: { source: 'menu' } })}
-                className="s-btn s-btn-primary mt-6"
+        {/* Meal tabs (jump to slide) + arrows */}
+        <div className="mt-10 flex items-center justify-between gap-6">
+          <div
+            ref={tabRowRef}
+            role="group"
+            aria-label={s('categoriesLabel')}
+            className="relative -mx-1 flex gap-x-5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {grouped.map(({ key }) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={activeCategory === key}
+                aria-controls={`menu-slide-${key}`}
+                onClick={() => goToCategory(key)}
+                className={textBtn(activeCategory === key)}
               >
-                <WhatsAppIcon size={19} />
-                {t('fullMenuBtn')}
-              </a>
-            </div>
+                {s(key)}
+              </button>
+            ))}
           </div>
+          <div className="hidden flex-none gap-3 sm:flex">
+            <button type="button" onClick={() => step(-1)} disabled={atStart} aria-label={s('prev')} className={arrowBtn}>
+              <ChevronLeft size={22} aria-hidden="true" />
+            </button>
+            <button type="button" onClick={() => step(1)} disabled={atEnd} aria-label={s('next')} className={arrowBtn}>
+              <ChevronRight size={22} aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* The carousel: starts aligned with the content column and bleeds to
+          the right edge of the screen. Native scroll-snap = swipe on touch,
+          trackpad/shift-wheel on desktop, arrows/tabs for everyone. */}
+      <div
+        ref={trackRef}
+        role="region"
+        aria-roledescription="carousel"
+        aria-label={s('carouselLabel')}
+        tabIndex={0}
+        className="mt-8 flex items-start snap-x snap-mandatory gap-5 overflow-x-auto pb-4 outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6"
+        style={{
+          paddingInline: 'max(var(--site-gutter), calc((100vw - var(--site-max)) / 2))',
+          scrollPaddingInline: 'max(var(--site-gutter), calc((100vw - var(--site-max)) / 2))',
+        }}
+      >
+        {grouped.length === 0 && (
+          <p className="text-[1.05rem] text-[var(--site-ink-soft)]">{s('empty')}</p>
+        )}
+
+        {grouped.map(({ key, items }) => (
+          <article
+            key={key}
+            id={`menu-slide-${key}`}
+            ref={(el) => { slideRefs.current[key] = el; }}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={t(`categories.${key}`)}
+            className="flex w-[82vw] max-w-[680px] flex-none snap-start flex-col overflow-hidden rounded-[28px] bg-[var(--site-paper-deep)] sm:w-[540px] lg:w-[660px]"
+          >
+            <div className="relative aspect-[16/9] w-full sm:aspect-[21/9] lg:aspect-[3/1]">
+              <Image
+                src={CATEGORY_PHOTO[key]}
+                alt={s(`photo.${key}`)}
+                fill
+                sizes="(max-width: 640px) 82vw, 660px"
+                className="object-cover"
+              />
+            </div>
+
+            <div className="flex flex-1 flex-col p-6 md:px-8 md:py-7">
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="s-h3 text-[var(--site-leaf-deep)]">{t(`categories.${key}`)}</h3>
+                <span className="flex-none text-[0.88rem] font-semibold text-[var(--site-brass-text)]">
+                  {s('dishes', { count: items.length })}
+                </span>
+              </div>
+
+              <ul className="mt-4 grid grid-cols-2 gap-x-5 lg:grid-cols-3">
+                {items.map((item) => {
+                  const primary = locale === 'ta' ? item.nameTa : item.nameEn;
+                  const secondary = locale === 'ta' ? item.nameEn : item.nameTa;
+                  return (
+                    <li key={item.id} className="flex items-start gap-2.5 py-2">
+                      <span
+                        className={`s-mark s-mark-${item.foodType} mt-[0.38em]`}
+                        role="img"
+                        aria-label={markLabel[item.foodType]}
+                      />
+                      <span className="min-w-0">
+                        <span className="s-serif block text-[1.05rem] font-medium leading-snug text-[var(--site-ink)]">
+                          {primary}
+                        </span>
+                        <span className="block text-[0.82rem] text-[var(--site-ink-muted)]" lang={locale === 'ta' ? 'en' : 'ta'}>
+                          {secondary}
+                        </span>
+                        {item.isSignature && (
+                          <span className="mt-0.5 block text-[0.78rem] font-semibold italic text-[var(--site-chilli)]">
+                            {s('signature')}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {/* Full menu CTA */}
+      <div className="s-container">
+        <div className="mt-10 flex flex-col gap-6 rounded-[28px] bg-[var(--site-leaf-deep)] p-7 md:flex-row md:items-center md:justify-between md:p-9">
+          <div>
+            <p className="s-serif text-[1.3rem] font-medium leading-snug text-[var(--site-on-dark)]">
+              {t('fullMenuText')}
+            </p>
+            <p className="mt-2 text-[0.95rem] text-[var(--site-on-dark-soft)]">{t('pricingNote')}</p>
+          </div>
+          <a
+            href={SITE.whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track({ event: 'whatsapp_open', metadata: { source: 'menu' } })}
+            className="s-btn s-btn-brass flex-none"
+          >
+            <WhatsAppIcon size={19} />
+            {t('fullMenuBtn')}
+          </a>
         </div>
       </div>
     </section>

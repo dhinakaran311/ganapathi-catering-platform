@@ -40,16 +40,19 @@ export default function ServiceAreaChecker({ areas }: ServiceAreaCheckerProps) {
 
   const nameOf = (a: ServiceArea) => (locale === 'ta' && a.name_ta ? a.name_ta : a.name_en);
 
+  // Best match first: exact name → name starts with the query → partial
+  // match. (Previously the first partial match won, so "avinashi" matched
+  // "Avinashi Palayam" — free, 4 km — instead of Avinashi town — charged.)
   const match = useMemo(() => {
     if (!query.trim()) return null;
     const q = normalize(query);
     if (!q) return null;
+    const names = (a: ServiceArea) => [normalize(a.name_en), normalize(a.name_ta)].filter(Boolean);
     return (
-      areas.find((a) => {
-        const en = normalize(a.name_en);
-        const ta = normalize(a.name_ta);
-        return en.includes(q) || ta.includes(q) || q.includes(en);
-      }) ?? null
+      areas.find((a) => names(a).some((n) => n === q)) ??
+      areas.find((a) => names(a).some((n) => n.startsWith(q))) ??
+      areas.find((a) => names(a).some((n) => n.includes(q) || q.includes(n))) ??
+      null
     );
   }, [query, areas]);
 

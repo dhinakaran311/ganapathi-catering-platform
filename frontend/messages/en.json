@@ -341,7 +341,18 @@
       "signature": "Signature",
       "empty": "No dishes match this filter.",
       "photoTiffin": "Morning tiffin spread with idly, dosa and pongal",
-      "photoSpecial": "Country chicken curry"
+      "photoSpecial": "Country chicken curry",
+      "prev": "Previous meal",
+      "next": "Next meal",
+      "carouselLabel": "Menu by meal",
+      "dishes": "{count} dishes",
+      "photo": {
+        "breakfast": "Idly with sambar and chutney",
+        "lunch": "Full meals served on a banana leaf",
+        "dinner": "Dosa, idly and chutneys",
+        "snacks": "Pongal with medu vadai",
+        "special": "Country chicken curry"
+      }
     },
     "process": {
       "lead": "From the first message to the last plate — everything happens on WhatsApp."
@@ -455,6 +466,12 @@
       "notOpened": "WhatsApp didn’t open?",
       "openManually": "Open WhatsApp",
       "back": "Back to home"
+    },
+    "notFound": {
+      "title": "We couldn’t find that page",
+      "body": "The link may be old or mistyped. Everything you need — menu, pricing and enquiries — is on our home page.",
+      "home": "Go to home page",
+      "whatsapp": "Ask us on WhatsApp"
     }
   }
 }
