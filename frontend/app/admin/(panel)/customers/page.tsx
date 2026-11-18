@@ -4,26 +4,34 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { ArrowRight, Phone } from 'lucide-react';
 import DeleteCustomerButton from '@/components/admin/DeleteCustomerButton';
+import Pagination from '@/components/admin/Pagination';
+import { pageRange, parsePage } from '@/lib/admin/pagination';
+
+const PAGE_SIZE = 50;
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const params = await searchParams;
+  // Strip PostgREST filter syntax characters from the free-text search.
+  const q = params.q?.replace(/[,().*%\\:"']/g, ' ').trim().slice(0, 80) || undefined;
+  const page = parsePage(params.page);
+  const [from, to] = pageRange(page, PAGE_SIZE);
   const supabase = await createClient();
 
   let query = supabase
     .from('customers')
-    .select('id, name, phone, total_orders, last_order_date, created_at')
+    .select('id, name, phone, total_orders, last_order_date, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(from, to);
 
   if (q) {
     query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%`);
   }
 
-  const { data: customers } = await query;
+  const { data: customers, count: totalCustomers } = await query;
 
   return (
     <div>
@@ -191,6 +199,14 @@ export default async function CustomersPage({
           ))
         )}
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={totalCustomers ?? 0}
+        basePath="/admin/customers"
+        params={{ q }}
+      />
     </div>
   );
 }

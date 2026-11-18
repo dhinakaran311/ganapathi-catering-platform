@@ -16,11 +16,16 @@ import {
   type PaymentType,
   type PaymentMethodType,
 } from '@/types/payment';
+import Pagination from '@/components/admin/Pagination';
+import { pageRange, parsePage } from '@/lib/admin/pagination';
+
+const PAGE_SIZE = 50;
 
 interface SearchParams {
   status?: string;
   method?: string;
   q?: string;
+  page?: string;
 }
 
 const fmt = (n: number) =>
@@ -39,6 +44,12 @@ export default async function PaymentsPage({
 }) {
   const params = await searchParams;
   const { status, method, q } = params;
+  // Without a search term the list is paginated server-side. A search term
+  // matches joined invoice/customer data in memory, so it keeps the original
+  // behaviour (latest 200 matching rows, no pagination).
+  const paginate = !q;
+  const page = parsePage(params.page);
+  const [from, to] = pageRange(page, PAGE_SIZE);
 
   const supabase = createAdminClient();
 
@@ -64,19 +75,30 @@ export default async function PaymentsPage({
       verified_at,
       rejected_at,
       rejection_reason
-    `)
+    `, { count: 'exact' })
     .eq('is_deleted', false)
-    .order('payment_date', { ascending: false })
-    .limit(200);
+    .order('payment_date', { ascending: false });
+  query = paginate ? query.range(from, to) : query.limit(200);
+
+  // Totals cover ALL payments matching the filters, not just this page.
+  let totalsQuery = supabase
+    .from('payments')
+    .select('amount, status')
+    .eq('is_deleted', false);
 
   if (status && status !== 'all') {
     query = query.eq('status', status as PaymentStatusType);
+    totalsQuery = totalsQuery.eq('status', status as PaymentStatusType);
   }
   if (method && method !== 'all') {
     query = query.eq('payment_method', method);
+    totalsQuery = totalsQuery.eq('payment_method', method);
   }
 
-  const { data: payments } = await query;
+  const [{ data: payments, count: totalPayments }, { data: totalsRows }] = await Promise.all([
+    query,
+    totalsQuery,
+  ]);
 
   // Fetch invoice numbers for display (single batch query)
   const invoiceIds = [...new Set((payments ?? []).map((p) => p.invoice_id).filter(Boolean))];
@@ -95,10 +117,11 @@ export default async function PaymentsPage({
   const enquiryMap = new Map((enquiriesRes.data ?? []).map((e) => [e.id, e]));
 
   // Financial summary from verified payments only
-  const verifiedPayments = (payments ?? []).filter((p) => p.status === 'VERIFIED');
+  const allForTotals   = totalsRows ?? [];
+  const verifiedPayments = allForTotals.filter((p) => p.status === 'VERIFIED');
   const totalVerified  = verifiedPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const totalPending   = (payments ?? []).filter((p) => p.status === 'PENDING').reduce((s, p) => s + Number(p.amount), 0);
-  const totalRejected  = (payments ?? []).filter((p) => p.status === 'REJECTED').reduce((s, p) => s + Number(p.amount), 0);
+  const totalPending   = allForTotals.filter((p) => p.status === 'PENDING').reduce((s, p) => s + Number(p.amount), 0);
+  const totalRejected  = allForTotals.filter((p) => p.status === 'REJECTED').reduce((s, p) => s + Number(p.amount), 0);
 
   // Filter by customer name/invoice number search
   const filteredPayments = q
@@ -352,6 +375,16 @@ export default async function PaymentsPage({
           })
         )}
       </div>
+
+      {paginate && (
+        <Pagination
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={totalPayments ?? 0}
+          basePath="/admin/payments"
+          params={{ status, method }}
+        />
+      )}
     </div>
   );
 }

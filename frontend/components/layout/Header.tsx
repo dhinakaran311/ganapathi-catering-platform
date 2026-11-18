@@ -13,10 +13,12 @@ import { Menu as MenuIcon, X, Phone } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { WhatsAppIcon } from '@/components/site/icons';
 import { SITE } from '@/lib/site';
+import { useSiteBrand } from '@/components/site/SiteBrand';
 
 export default function Header() {
   const t = useTranslations('Site.nav');
   const locale = useLocale();
+  const { logoUrl } = useSiteBrand(); // Settings → Theme logo (null = bundled logo)
   const [open, setOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -55,7 +57,15 @@ export default function Header() {
     <header className={`sticky top-0 bg-[var(--site-paper)] ${open ? 'z-[1000]' : 'z-50'}`}>
       <div className="s-container flex h-[var(--site-header)] items-center justify-between gap-6">
         <Link href={home} aria-label={t('home')} className="flex flex-none items-center gap-3">
-          <Image src="/logos/logo-192.png" alt="" width={44} height={44} className="h-11 w-11 object-contain" priority />
+          <Image
+            src={logoUrl ?? '/logos/logo-192.png'}
+            alt=""
+            width={44}
+            height={44}
+            className="h-11 w-11 object-contain"
+            priority
+            unoptimized={Boolean(logoUrl?.startsWith('http'))}
+          />
           <span className="flex flex-col leading-tight">
             <span className="s-serif text-[1.05rem] font-semibold text-[var(--site-leaf-deep)]" lang="ta">
               ஸ்ரீ கணபதி மெஸ்
@@ -87,7 +97,7 @@ export default function Header() {
             href={SITE.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="s-btn s-btn-primary hidden min-h-[44px] px-5 text-[0.95rem] md:inline-flex"
+            className="s-btn s-btn-primary s-wa hidden min-h-[44px] px-5 text-[0.95rem] md:inline-flex"
           >
             <WhatsAppIcon size={18} />
             {t('whatsapp')}

@@ -1,21 +1,63 @@
 // app/admin/audit-logs/page.tsx — H60: Audit log viewer
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import Pagination from '@/components/admin/Pagination';
+import { pageRange, parsePage } from '@/lib/admin/pagination';
 
-export default async function AuditLogsPage() {
+const PAGE_SIZE = 50;
+
+export default async function AuditLogsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const page = parsePage((await searchParams).page);
+  const [from, to] = pageRange(page, PAGE_SIZE);
   const supabase = await createClient();
 
-  const { data: logs } = await supabase
+  // audit_logs columns are user_id / old_data / new_data / metadata (009 +
+  // 018). The page previously selected non-existent user_email / changes
+  // columns, so the query failed and the list was always empty.
+  const { data: rows, count: totalLogs } = await supabase
     .from('audit_logs')
-    .select('id, action, table_name, record_id, user_email, created_at, changes')
+    .select('id, action, table_name, record_id, user_id, created_at, old_data, new_data, metadata', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(100);
+    .range(from, to);
+
+  // Resolve user ids → emails for display (server-side, service role).
+  const userIds = [...new Set((rows ?? []).map((r) => r.user_id).filter(Boolean))];
+  const emailById: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: users } = await createAdminClient().auth.admin.listUsers({ perPage: 1000 });
+    users?.users?.forEach((u) => { emailById[u.id] = u.email ?? ''; });
+  }
+
+  const logs = (rows ?? []).map((r) => {
+    const changes =
+      r.old_data || r.new_data || r.metadata
+        ? {
+            ...(r.old_data ? { before: r.old_data } : {}),
+            ...(r.new_data ? { after: r.new_data } : {}),
+            ...(r.metadata ? { details: r.metadata } : {}),
+          }
+        : null;
+    return { ...r, user_email: r.user_id ? emailById[r.user_id] || r.user_id.slice(0, 8) : null, changes };
+  });
 
   const actionColors: Record<string, string> = {
     INSERT: 'bg-green-100 text-green-800',
     UPDATE: 'bg-yellow-100 text-yellow-800',
     DELETE: 'bg-red-100 text-red-800',
   };
+  // Descriptive actions (INVOICE_CREATED, PAYMENT_REJECTED, …) by keyword.
+  const colorFor = (action: string) =>
+    actionColors[action] ??
+    (/DELETE|CANCEL|REJECT/.test(action)
+      ? actionColors.DELETE
+      : /CREATE|INSERT|VERIFIED|COMPLETED/.test(action)
+        ? actionColors.INSERT
+        : actionColors.UPDATE);
 
   return (
     <div>
@@ -57,7 +99,7 @@ export default async function AuditLogsPage() {
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded font-body text-xs font-bold ${
-                          actionColors[log.action] ?? 'bg-gray-100 text-gray-800'
+                          colorFor(log.action)
                         }`}
                       >
                         {log.action}
@@ -96,6 +138,8 @@ export default async function AuditLogsPage() {
           </table>
         </div>
       </div>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={totalLogs ?? 0} basePath="/admin/audit-logs" />
     </div>
   );
 }

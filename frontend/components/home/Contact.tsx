@@ -7,7 +7,7 @@
 
 
 import { useTranslations, useLocale } from 'next-intl';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { generateWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics/track';
@@ -30,6 +30,8 @@ interface ContactFormData {
 }
 
 const FORM_STORAGE_KEY = 'sgm_enquiry_form';
+// Last tracking code, kept on this device so the customer can find it again.
+const LAST_TRACKING_KEY = 'sgm_last_tracking_code';
 
 // Option VALUES are sent to WhatsApp / the API exactly as before.
 const EVENT_OPTIONS = [
@@ -76,6 +78,11 @@ export default function Contact() {
   const [honeypot, setHoneypot] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [turnstileKey, setTurnstileKey] = useState(0); // remount → fresh token
+  // Tracking code returned by /api/enquiries, shown in the confirmation.
+  const [trackingCode, setTrackingCode] = useState<string | null>(null);
+  const [codeState, setCodeState] = useState<'idle' | 'pending' | 'ready' | 'none'>('idle');
+  const [copied, setCopied] = useState(false);
+  const autoCloseRef = useRef<number | null>(null);
 
   // B11: Auto-save form to localStorage while filling
   useEffect(() => {
@@ -118,8 +125,11 @@ export default function Contact() {
     });
     const whatsappUrl = buildWhatsAppUrl(message);
 
-    // 2️⃣ Save to Supabase in the background (fire-and-forget)
-    // If this fails the WhatsApp flow is NOT blocked — customer experience is protected
+    // 2️⃣ Save to Supabase in the background. The WhatsApp flow never waits
+    // for it (customer experience is protected), but when the save returns a
+    // tracking code we show it in the confirmation dialog.
+    setTrackingCode(null);
+    setCodeState('pending');
     fetch('/api/enquiries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -136,10 +146,25 @@ export default function Contact() {
         website: honeypot,
         turnstileToken: turnstileToken || undefined,
       }),
-    }).catch((err) => {
-      // Silently log — never surface errors to the customer
-      console.error('[Contact] enquiry save failed:', err);
-    });
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { tracking_code?: string } | null) => {
+        const code = data?.tracking_code;
+        if (code) {
+          setTrackingCode(code);
+          setCodeState('ready');
+          // A code is worth keeping on screen — cancel the auto-close.
+          if (autoCloseRef.current) window.clearTimeout(autoCloseRef.current);
+          try { localStorage.setItem(LAST_TRACKING_KEY, code); } catch { /* storage unavailable */ }
+        } else {
+          setCodeState('none');
+        }
+      })
+      .catch((err) => {
+        // Silently log — never surface errors to the customer
+        setCodeState('none');
+        console.error('[Contact] enquiry save failed:', err);
+      });
 
     // 3️⃣ Open WhatsApp immediately (don't wait for DB)
     track({ event: 'whatsapp_open', metadata: { source: 'contact_form' } });
@@ -152,8 +177,18 @@ export default function Contact() {
     setTurnstileKey((k) => k + 1); // tokens are single-use
     setIsSubmitting(false);
     setShowSuccess(true);
-    // Auto-close popup after 6 seconds
-    setTimeout(() => setShowSuccess(false), 6000);
+    // Auto-close popup after 6 seconds (cancelled if a tracking code arrives)
+    if (autoCloseRef.current) window.clearTimeout(autoCloseRef.current);
+    autoCloseRef.current = window.setTimeout(() => setShowSuccess(false), 6000);
+  };
+
+  const copyCode = async () => {
+    if (!trackingCode) return;
+    try {
+      await navigator.clipboard.writeText(trackingCode);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard blocked — the code is still visible */ }
   };
 
   const handleChange = (
@@ -287,7 +322,7 @@ export default function Contact() {
 
               <div className="sm:col-span-2">
                 <TurnstileWidget key={turnstileKey} onToken={setTurnstileToken} />
-                <button type="submit" disabled={isSubmitting} className="s-btn s-btn-primary w-full">
+                <button type="submit" disabled={isSubmitting} className="s-btn s-btn-primary s-wa w-full">
                   <WhatsAppIcon size={20} />
                   {isSubmitting ? s('sending') : t('form.submit')}
                 </button>
@@ -341,6 +376,34 @@ export default function Contact() {
           >
             <h3 id="enquiry-sent-title" className="s-h3 text-[var(--site-leaf-deep)]">{s('successTitle')}</h3>
             <p className="mt-3 text-[1rem] leading-relaxed text-[var(--site-ink-soft)]">{s('successBody')}</p>
+
+            {/* Tracking code (B13) — appears as soon as the save returns */}
+            <div aria-live="polite">
+              {codeState === 'pending' && (
+                <p className="mt-5 text-[0.92rem] text-[var(--site-ink-muted)]">{s('gettingCode')}</p>
+              )}
+              {codeState === 'ready' && trackingCode && (
+                <div className="mt-5 rounded-2xl bg-[var(--site-paper-deep)] p-5">
+                  <p className="text-[0.88rem] font-semibold text-[var(--site-ink-muted)]">{s('trackingLabel')}</p>
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+                    <span className="s-serif text-[1.7rem] font-semibold tracking-[0.12em] text-[var(--site-leaf-deep)]">
+                      {trackingCode}
+                    </span>
+                    <button type="button" onClick={copyCode} className="s-btn s-btn-outline min-h-[40px] px-4 text-[0.88rem]">
+                      {copied ? s('copied') : s('copy')}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[0.88rem] leading-relaxed text-[var(--site-ink-soft)]">{s('trackingHint')}</p>
+                  <Link
+                    href={`/${locale}/track/${trackingCode}`}
+                    className="s-link mt-3 inline-block text-[var(--site-leaf)]"
+                  >
+                    {s('trackLink')}
+                  </Link>
+                </div>
+              )}
+            </div>
+
             <Link href={`/${locale}/quote/success`} className="s-link mt-5 inline-block text-[var(--site-leaf)]">
               {s('next')}
             </Link>

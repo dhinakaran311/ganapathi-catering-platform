@@ -16,7 +16,7 @@ export interface WhatsAppFormData {
   message?: string;
 }
 
-const WHATSAPP_NUMBER = '919942351280';
+export const WHATSAPP_NUMBER = '919942351280';
 
 /**
  * Generate a pre-filled WhatsApp message from enquiry form data

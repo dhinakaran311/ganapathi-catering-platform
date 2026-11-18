@@ -127,19 +127,22 @@ DECLARE hotel_uuid UUID;
 BEGIN
   SELECT id INTO hotel_uuid FROM hotels WHERE name_en = 'Shri Ganapathi Mess' LIMIT 1;
 
+  -- SAMPLE reviews for testing the admin moderation screen ONLY.
+  -- Inserted as NOT approved so they never appear on the public site as if
+  -- they were real customer reviews (see migration 028).
   INSERT INTO reviews (hotel_id, customer_name, event_type, rating, review_ta, review_en, is_approved) VALUES
     (hotel_uuid, 'முருகன் K.', 'wedding', 5, 
      'மிகவும் சுவையான சாப்பாடு! திருமணத்தில் 200 பேருக்கு சாப்பாடு சிறப்பாக வழங்கப்பட்டது. அனைவரும் பாராட்டினர்.',
      'Very tasty food! Catering for 200 people at our wedding was excellent. Everyone appreciated the authentic taste.',
-     true),
+     false),
     (hotel_uuid, 'கவிதா R.', 'birthday', 5,
      'நல்ல தரமான உணவு, சரியான நேரத்தில் டெலிவரி! 100 பேருக்கு பிறந்தநாள் விழாவிற்கு மிகவும் சந்தோஷமாக இருந்தது.',
      'Good quality food, timely delivery! Very happy with the catering for our birthday party of 100 people. Will order again.',
-     true),
+     false),
     (hotel_uuid, 'செந்தில் M.', 'corporate', 4,
      'அலுவலக நிகழ்விற்கு சிறந்த சேவை. 150 பேருக்கு சாப்பாடு ஏற்பாடு செய்தனர். நாட்டுக்கோழி குழம்பு மிகவும் சுவையாக இருந்தது!',
      'Excellent service for our office event. Arranged food for 150 people. The Country Chicken Curry was outstanding!',
-     true);
+     false);
 
 END $$;
 

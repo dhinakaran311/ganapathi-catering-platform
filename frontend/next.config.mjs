@@ -49,6 +49,12 @@ const nextConfig = {
     .map((s) => s.trim())
     .filter(Boolean),
 
+  // The invoice PDF route reads its fonts from disk (assets/fonts) — make
+  // sure they are shipped with that serverless function.
+  outputFileTracingIncludes: {
+    '/api/admin/invoices/*/pdf': ['./assets/fonts/**/*'],
+  },
+
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

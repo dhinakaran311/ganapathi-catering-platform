@@ -8,16 +8,19 @@ import { useState } from 'react';
 import { FileDown, MessageCircle, Loader2 } from 'lucide-react';
 import { buildInvoiceWhatsAppUrl } from '@/lib/invoice/whatsapp';
 import type { Invoice, InvoiceData } from '@/types/invoice';
+import type { PaymentDetails } from '@/lib/invoice/payment-details';
 
 interface InvoiceShareActionsProps {
   invoice: Invoice;
+  /** Saved Settings → Payment details, added to the WhatsApp message. */
+  paymentDefaults?: PaymentDetails;
 }
 
-export default function InvoiceShareActions({ invoice }: InvoiceShareActionsProps) {
+export default function InvoiceShareActions({ invoice, paymentDefaults }: InvoiceShareActionsProps) {
   const [downloading, setDownloading] = useState(false);
 
   const data = (invoice.invoice_data ?? {}) as InvoiceData;
-  const waUrl = buildInvoiceWhatsAppUrl(invoice, data);
+  const waUrl = buildInvoiceWhatsAppUrl(invoice, data, paymentDefaults);
 
   const handleDownload = async () => {
     setDownloading(true);

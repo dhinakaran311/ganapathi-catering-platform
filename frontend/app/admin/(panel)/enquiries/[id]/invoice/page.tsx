@@ -11,6 +11,7 @@ import InvoicePaymentPanel from '@/components/admin/InvoicePaymentPanel';
 import InvoiceShareActions from '@/components/admin/InvoiceShareActions';
 import type { InvoiceData } from '@/types/invoice';
 import type { InvoicePaymentSummary } from '@/types/payment';
+import { getHotelPaymentDetails } from '@/lib/invoice/payment-settings.server';
 
 export default async function EnquiryInvoicePage({
   params,
@@ -20,6 +21,8 @@ export default async function EnquiryInvoicePage({
   const { id } = await params;
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
+  // Real UPI / bank details from Settings → Payment (used by builder + share).
+  const paymentDefaults = await getHotelPaymentDetails();
 
   // Fetch the enquiry
   const { data: enq, error } = await supabase
@@ -137,11 +140,15 @@ export default async function EnquiryInvoicePage({
         enquiryId={id}
         defaultData={defaultData}
         existingInvoiceId={existingInvoice?.id}
+        paymentDefaults={paymentDefaults}
       />
 
       {/* Share actions — PDF + WhatsApp (only when an invoice exists) */}
       {existingInvoice && (
-        <InvoiceShareActions invoice={existingInvoice as import('@/types/invoice').Invoice} />
+        <InvoiceShareActions
+          invoice={existingInvoice as import('@/types/invoice').Invoice}
+          paymentDefaults={paymentDefaults}
+        />
       )}
 
       {/* Payment Panel — only shown when an invoice has been saved */}

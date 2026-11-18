@@ -7,6 +7,10 @@ import { useState, useCallback } from 'react';
 import { Plus, Trash2, MessageCircle, Save, FileText, ChevronUp, Copy, XCircle } from 'lucide-react';
 import type { InvoiceLineItem, InvoiceData } from '@/types/invoice';
 import CancelInvoiceModal from '@/components/admin/CancelInvoiceModal';
+import { resolvePaymentDetails, type PaymentDetails } from '@/lib/invoice/payment-details';
+
+// Used only when Settings → Payment has no UPI id saved (previous behaviour).
+const LEGACY_DEFAULT_UPI = 'shanthishanthi2772@okaxis';
 
 /* ───────────────────────────── helpers ───────────────────────────── */
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -44,10 +48,12 @@ interface Props {
   defaultData?: Partial<InvoiceData>;
   existingInvoiceId?: string;
   onSaved?: (invoiceId: string, invoiceNumber: string) => void;
+  /** Saved Settings → Payment details (UPI / bank) used as defaults. */
+  paymentDefaults?: PaymentDetails;
 }
 
 /* ───────────────────────────── component ───────────────────────────── */
-export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoiceId, onSaved }: Props) {
+export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoiceId, onSaved, paymentDefaults }: Props) {
   /* ── state ── */
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -73,10 +79,15 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   const [discountAmount, setDiscountAmount] = useState(defaultData?.discountAmount ?? 0);
   const [discountNote, setDiscountNote] = useState(defaultData?.discountNote ?? '');
   const [taxRate, setTaxRate] = useState(defaultData?.taxRate ?? 0);
-  const [upiId] = useState(defaultData?.upiId ?? 'shanthishanthi2772@okaxis');
-  const [bankDetails] = useState(
-    defaultData?.bankDetails ?? 'State Bank of India\nA/C: XXXXXXXXXXXXX\nIFSC: SBIN0XXXXXX'
-  );
+  // Payment details: what's saved on this invoice → Settings → Payment →
+  // (UPI only) the previous built-in id. The old placeholder bank block
+  // ("A/C: XXXX…") is never used; with no saved bank details none is shown.
+  const resolvedPayment = resolvePaymentDetails(defaultData, {
+    upiId: paymentDefaults?.upiId || LEGACY_DEFAULT_UPI,
+    bankDetails: paymentDefaults?.bankDetails ?? '',
+  });
+  const [upiId] = useState(resolvedPayment.upiId);
+  const [bankDetails] = useState(resolvedPayment.bankDetails);
   const [notes, setNotes] = useState(defaultData?.notes ?? '');
   const [terms, setTerms] = useState(
     defaultData?.terms ??
@@ -209,7 +220,8 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       taxRate > 0 ? `Tax (${taxRate}%): ${fmt(taxAmount)}` : '',
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `*TOTAL: ${fmt(total)}*`,
-      `💳 Pay via UPI: *${upiId}*`,
+      upiId ? `💳 Pay via UPI: *${upiId}*` : '',
+      bankDetails ? `🏦 Bank transfer:\n${bankDetails}` : '',
       notes ? `\n📝 ${notes}` : '',
       '',
       `Thank you for choosing Shri Ganapathi Mess! 🙏`,

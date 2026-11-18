@@ -47,7 +47,7 @@ export default function Hero() {
               rel="noopener noreferrer"
               event="whatsapp_open"
               source="hero"
-              className="s-btn s-btn-primary"
+              className="s-btn s-btn-primary s-wa"
             >
               <WhatsAppIcon size={20} />
               {t('whatsappBtn')}

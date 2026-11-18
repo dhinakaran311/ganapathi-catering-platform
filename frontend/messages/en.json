@@ -418,7 +418,13 @@
       "successBody": "WhatsApp has opened on your device. Tap send and we’ll reply with a quote within 2 hours.",
       "next": "What happens next",
       "ok": "Got it",
-      "close": "Close"
+      "close": "Close",
+      "gettingCode": "Getting your tracking code…",
+      "trackingLabel": "Your tracking code",
+      "trackingHint": "Save this code — use it any time to check the status of your enquiry.",
+      "trackLink": "Track your enquiry",
+      "copy": "Copy",
+      "copied": "Copied"
     },
     "footer": {
       "explore": "Explore",

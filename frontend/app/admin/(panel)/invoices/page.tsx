@@ -11,6 +11,8 @@ import {
   INVOICE_PAYMENT_STATUS_COLORS,
   type InvoicePaymentSummary,
 } from '@/types/payment';
+import Pagination from '@/components/admin/Pagination';
+import { pageRange, parsePage } from '@/lib/admin/pagination';
 
 const INVOICE_STATUS_ICON: Record<InvoiceStatus, typeof FileText> = {
   DRAFT:          FileText,
@@ -23,14 +25,30 @@ const INVOICE_STATUS_ICON: Record<InvoiceStatus, typeof FileText> = {
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
 
-export default async function InvoicesPage() {
+const PAGE_SIZE = 50;
+
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const page = parsePage((await searchParams).page);
+  const [from, to] = pageRange(page, PAGE_SIZE);
   const supabase = await createClient();
   const adminSupabase = createAdminClient();
 
-  const { data: invoices, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // The table shows one page; the totals at the top are computed from ALL
+  // invoices (lightweight query) so they're identical to before pagination.
+  const [{ data: invoices, error }, { data: allTotals, count: totalInvoiceCount }] = await Promise.all([
+    supabase
+      .from('invoices')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, to),
+    supabase
+      .from('invoices')
+      .select('total_amount', { count: 'exact' }),
+  ]);
 
   // Load payment summaries from the DB view for all invoices
   const { data: summaries } = await adminSupabase
@@ -42,13 +60,13 @@ export default async function InvoicesPage() {
   );
 
   // Financial aggregates from verified payments (source of truth)
-  const totalInvoiced   = (invoices ?? []).reduce((s, i) => s + (i.total_amount ?? 0), 0);
+  const totalInvoiced   = (allTotals ?? []).reduce((s, i) => s + (i.total_amount ?? 0), 0);
   const totalReceived   = (summaries ?? []).reduce((s: number, sm: InvoicePaymentSummary) => s + Number(sm.amount_received), 0);
   const totalOutstanding = Math.max(totalInvoiced - totalReceived, 0);
   const paidCount       = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'PAID').length;
   const partialCount    = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'PARTIALLY_PAID').length;
   const unpaidCount     = (summaries ?? []).filter((sm: InvoicePaymentSummary) => sm.payment_status === 'UNPAID').length;
-  const totalInvoices   = invoices?.length ?? 0;
+  const totalInvoices   = totalInvoiceCount ?? allTotals?.length ?? 0;
 
   return (
     <div>
@@ -330,6 +348,8 @@ export default async function InvoicesPage() {
         <IndianRupee size={10} className="inline" /> Amount Received is calculated from verified payments in the payments table.
         Legacy advance payments have been automatically migrated.
       </p>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={totalInvoices} basePath="/admin/invoices" />
     </div>
   );
 }

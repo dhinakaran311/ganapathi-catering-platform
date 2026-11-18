@@ -11,8 +11,13 @@ import {
   EnquiryStatus,
 } from '@/types/enquiry';
 import { ENQUIRY_SOURCES, SOURCE_LABELS, type EnquirySource } from '@/types/staff';
+import Pagination from '@/components/admin/Pagination';
+import { pageRange, parsePage } from '@/lib/admin/pagination';
+
+const PAGE_SIZE = 50;
 
 interface SearchParams {
+  page?: string;
   status?: string;
   q?: string;
   source?: string;
@@ -35,7 +40,11 @@ export default async function EnquiriesPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  const { status, q, source, assigned, overdue } = params;
+  const { status, source, assigned, overdue } = params;
+  // Strip PostgREST filter syntax characters from the free-text search.
+  const q = params.q?.replace(/[,().*%\\:"']/g, ' ').trim().slice(0, 80) || undefined;
+  const page = parsePage(params.page);
+  const [from, to] = pageRange(page, PAGE_SIZE);
 
   // Fetch role for potential future per-role filtering (unused currently)
   await getCurrentUserWithRole();
@@ -65,9 +74,9 @@ export default async function EnquiriesPage({
       id, name, phone, event_type, guest_count, event_date, status,
       source, created_at, next_action, next_action_date, next_action_done,
       assigned_to
-    `)
+    `, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(100);
+    .range(from, to);
 
   if (status && status !== 'all') query = query.eq('status', status);
   if (source && source !== 'all') query = query.eq('source', source);
@@ -83,7 +92,7 @@ export default async function EnquiriesPage({
       .lt('next_action_date', today);
   }
 
-  const { data: enquiries } = await query;
+  const { data: enquiries, count: totalEnquiries } = await query;
 
   const currentParams = { status, q, source, assigned, overdue };
 
@@ -316,6 +325,14 @@ export default async function EnquiriesPage({
           })
         )}
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={PAGE_SIZE}
+        total={totalEnquiries ?? 0}
+        basePath="/admin/enquiries"
+        params={currentParams}
+      />
     </div>
   );
 }

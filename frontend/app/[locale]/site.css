@@ -173,6 +173,11 @@
   .s-btn-brass { background-color: var(--site-brass-light); color: var(--site-leaf-deep); }
   .s-btn-brass:hover { background-color: #F1D68C; }
 
+  /* WhatsApp call-to-action. Uses the Theme accent colour when the admin sets
+     one (Settings → Theme → Accent); otherwise looks exactly like primary. */
+  .s-wa { background-color: var(--site-wa-bg, var(--site-leaf)); color: var(--site-wa-fg, var(--site-on-dark)); }
+  .s-wa:hover { background-color: var(--site-wa-bg-hover, var(--site-leaf-deep)); }
+
   .s-btn-on-dark { box-shadow: inset 0 0 0 2px var(--site-on-dark); color: var(--site-on-dark); }
   .s-btn-on-dark:hover { background-color: var(--site-on-dark); color: var(--site-leaf-deep); }
 

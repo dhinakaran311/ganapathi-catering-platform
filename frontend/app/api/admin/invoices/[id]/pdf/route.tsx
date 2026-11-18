@@ -9,15 +9,40 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireMinRole } from '@/lib/auth/roles';
 import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
 import React from 'react';
-import { renderToBuffer, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { renderToBuffer, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import type { Invoice, InvoiceData } from '@/types/invoice';
+import { resolvePaymentDetails, type PaymentDetails } from '@/lib/invoice/payment-details';
+import { getHotelPaymentDetails } from '@/lib/invoice/payment-settings.server';
+import { SITE } from '@/lib/site';
+
+// ── Fonts ────────────────────────────────────────────────────────────────────
+// The built-in Helvetica has no ₹ sign and no Tamil glyphs, so amounts and
+// Tamil customer names printed as blanks. Noto Sans Tamil (bundled in
+// assets/fonts, SIL OFL) covers Latin + Tamil + ₹. next.config.mjs includes
+// the files in this route's server bundle (outputFileTracingIncludes).
+const FONT_DIR = path.join(process.cwd(), 'assets', 'fonts');
+let fontsReady = false;
+function registerFonts() {
+  if (fontsReady) return;
+  Font.register({
+    family: 'NotoSansTamil',
+    fonts: [
+      { src: path.join(FONT_DIR, 'NotoSansTamil-Regular.ttf') },
+      { src: path.join(FONT_DIR, 'NotoSansTamil-Bold.ttf'), fontWeight: 'bold' },
+    ],
+  });
+  // Don't hyphenate names / Tamil words.
+  Font.registerHyphenationCallback((word) => [word]);
+  fontsReady = true;
+}
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n ?? 0);
 
 const styles = StyleSheet.create({
-  page: { padding: 36, fontSize: 10, fontFamily: 'Helvetica', color: '#1A3D20' },
+  page: { padding: 36, fontSize: 10, fontFamily: 'NotoSansTamil', color: '#1A3D20' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   brand: { fontSize: 18, fontWeight: 'bold', color: '#1A3D20' },
   brandSub: { fontSize: 9, color: '#6B5744', marginTop: 2 },
@@ -38,7 +63,7 @@ const styles = StyleSheet.create({
   footer: { position: 'absolute', bottom: 30, left: 36, right: 36, fontSize: 8, color: '#6B5744', textAlign: 'center' },
 });
 
-function InvoiceDoc({ invoice, data }: { invoice: Invoice; data: InvoiceData }) {
+function InvoiceDoc({ invoice, data, payment }: { invoice: Invoice; data: InvoiceData; payment: PaymentDetails }) {
   const lineItems = data.lineItems ?? [];
   return (
     <Document title={`Invoice ${invoice.invoice_number}`}>
@@ -48,7 +73,7 @@ function InvoiceDoc({ invoice, data }: { invoice: Invoice; data: InvoiceData }) 
           <View>
             <Text style={styles.brand}>Shri Ganapathi Mess</Text>
             <Text style={styles.brandSub}>Traditional Home-Style Catering · Tiruppur</Text>
-            <Text style={styles.brandSub}>+91 99423 51280</Text>
+            <Text style={styles.brandSub}>{SITE.phoneDisplay}</Text>
           </View>
           <View>
             <Text style={styles.title}>INVOICE</Text>
@@ -107,6 +132,15 @@ function InvoiceDoc({ invoice, data }: { invoice: Invoice; data: InvoiceData }) 
           </View>
         </View>
 
+        {/* How to pay (Settings → Payment, or what was saved on the invoice) */}
+        {(payment.upiId || payment.bankDetails) && (
+          <View style={[styles.section, { marginTop: 20 }]}>
+            <Text style={styles.sectionLabel}>PAYMENT DETAILS</Text>
+            {payment.upiId ? <Text>UPI: {payment.upiId}</Text> : null}
+            {payment.bankDetails ? <Text style={{ marginTop: 4 }}>{payment.bankDetails}</Text> : null}
+          </View>
+        )}
+
         {/* Notes / terms */}
         {(data.notes || data.terms) && (
           <View style={[styles.section, { marginTop: 20 }]}>
@@ -145,8 +179,10 @@ export async function GET(
 
   const typed = invoice as Invoice;
   const data = (typed.invoice_data ?? {}) as InvoiceData;
+  const payment = resolvePaymentDetails(data, await getHotelPaymentDetails());
 
-  const buffer = await renderToBuffer(InvoiceDoc({ invoice: typed, data }));
+  registerFonts();
+  const buffer = await renderToBuffer(InvoiceDoc({ invoice: typed, data, payment }));
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,

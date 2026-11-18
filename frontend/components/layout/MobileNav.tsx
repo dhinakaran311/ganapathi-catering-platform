@@ -34,7 +34,7 @@ export default function MobileNav() {
         target="_blank"
         rel="noopener noreferrer"
         onClick={() => track({ event: 'whatsapp_open', metadata: { source: 'mobile_bar' } })}
-        className={`${item} bg-[var(--site-leaf)] text-[var(--site-on-dark)] active:bg-[var(--site-leaf-deep)]`}
+        className={`${item} s-wa`}
       >
         <WhatsAppIcon size={21} />
         {t('whatsapp')}

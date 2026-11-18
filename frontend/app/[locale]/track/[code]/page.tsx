@@ -126,7 +126,7 @@ export default async function TrackPage({
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
             <p className="font-semibold text-[var(--site-ink)] sm:mr-3">{t('help')}</p>
-            <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" className="s-btn s-btn-primary">
+            <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" className="s-btn s-btn-primary s-wa">
               <WhatsAppIcon size={19} />
               {t('whatsapp')}
             </a>

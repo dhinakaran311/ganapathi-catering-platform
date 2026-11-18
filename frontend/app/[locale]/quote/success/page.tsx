@@ -36,7 +36,7 @@ export default async function QuoteSuccessPage({
           <div className="mt-14 rounded-[28px] bg-[var(--site-paper-deep)] p-7 md:p-9">
             <p className="font-semibold text-[var(--site-ink)]">{t('notOpened')}</p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" className="s-btn s-btn-primary">
+              <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" className="s-btn s-btn-primary s-wa">
                 <WhatsAppIcon size={19} />
                 {t('openManually')}
               </a>
