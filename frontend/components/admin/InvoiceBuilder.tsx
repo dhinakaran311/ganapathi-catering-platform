@@ -1,12 +1,14 @@
 'use client';
 
 // components/admin/InvoiceBuilder.tsx — Phase 5: Full Invoice Generator
-// Admin fills in this form → previews the invoice → saves to DB → sends via WhatsApp
+// Admin fills in this form → previews the invoice PDF → saves to DB → sends the
+// PDF via WhatsApp (share sheet on phones; download + chat elsewhere).
 
-import { useState, useCallback } from 'react';
-import { Plus, Trash2, MessageCircle, Save, FileText, ChevronUp, Copy, XCircle } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { Plus, Trash2, MessageCircle, Save, FileText, Copy, XCircle } from 'lucide-react';
 import type { InvoiceLineItem, InvoiceData } from '@/types/invoice';
 import CancelInvoiceModal from '@/components/admin/CancelInvoiceModal';
+import { useInvoicePdfShare } from '@/components/admin/useInvoicePdfShare';
 import { resolvePaymentDetails, type PaymentDetails } from '@/lib/invoice/payment-details';
 
 // Used only when Settings → Payment has no UPI id saved (previous behaviour).
@@ -61,7 +63,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   const [savedInvoiceNumber, setSavedInvoiceNumber] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
+  const pdfShare = useInvoicePdfShare();
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const [customerName, setCustomerName] = useState(defaultData?.customerName ?? '');
@@ -138,8 +140,18 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
     upiId, bankDetails, notes, terms,
   });
 
-  /* ── save to DB ── */
-  const handleSave = async () => {
+  /* ── unsaved-changes check (payment details excluded: the PDF always
+        resolves those from Settings → Payment) ── */
+  const formSnapshot = () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { upiId: _upi, bankDetails: _bank, ...rest } = buildInvoiceData();
+    return JSON.stringify(rest);
+  };
+  const [initialSnapshot] = useState<string | null>(() => (existingInvoiceId ? formSnapshot() : null));
+  const savedSnapshotRef = useRef<string | null>(initialSnapshot);
+
+  /* ── save to DB (returns the saved invoice, or null on failure) ── */
+  const handleSave = async (): Promise<{ id: string; number: string } | null> => {
     setSaving(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -164,70 +176,70 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       setSavedInvoiceNumber(json.invoice_number);
       setSuccessMsg(`✅ Invoice ${json.invoice_number} saved!`);
       onSaved?.(json.id, json.invoice_number);
+      savedSnapshotRef.current = formSnapshot();
+      pdfShare.reset(); // any prepared PDF is now out of date
+      return { id: json.id as string, number: (json.invoice_number as string) ?? '' };
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : 'Save failed');
+      return null;
     } finally {
       setSaving(false);
     }
   };
 
-  /* ── send via WhatsApp ── */
+  /** Save first only when needed, so the PDF always matches the form. */
+  const ensureSaved = async (): Promise<{ id: string; number: string } | null> => {
+    const dirty = !savedInvoiceId || formSnapshot() !== savedSnapshotRef.current;
+    if (!dirty) return { id: savedInvoiceId, number: savedInvoiceNumber };
+    return handleSave();
+  };
+
+  /* ── send the invoice PDF via WhatsApp (no text invoice) ── */
   const handleWhatsApp = async () => {
-    // Auto-save first if not saved
-    if (!savedInvoiceId) await handleSave();
+    setErrorMsg('');
+    const saved = await ensureSaved();
+    if (!saved) return;
 
-    const msg = buildWhatsAppText();
-    const url = `https://wa.me/91${customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
-
-    // Mark as SENT in DB (triggers INVOICE_SENT audit on the server)
-    if (savedInvoiceId) {
-      setSending(true);
-      try {
+    setSending(true);
+    try {
+      const sent = await pdfShare.share({
+        invoiceId: saved.id,
+        invoiceNumber: saved.number,
+        customerPhone,
+      });
+      // Mark as SENT in DB (triggers INVOICE_SENT audit on the server)
+      if (sent) {
         await fetch('/api/admin/invoices', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: savedInvoiceId, status: 'SENT', sent_at: new Date().toISOString() }),
+          body: JSON.stringify({ id: saved.id, status: 'SENT', sent_at: new Date().toISOString() }),
         });
-      } finally {
-        setSending(false);
       }
+    } finally {
+      setSending(false);
     }
-    window.open(url, '_blank');
   };
 
-  const buildWhatsAppText = () => {
-    const lines = [
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `🍛 *Shri Ganapathi Mess*`,
-      `📋 INVOICE ${savedInvoiceNumber || ''}`,
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `*Customer:* ${customerName}`,
-      customerPhone ? `*Phone:* ${customerPhone}` : '',
-      '',
-      `*Event:* ${eventType || '—'}`,
-      eventDate ? `*Date:* ${eventDate}` : '',
-      eventLocation ? `*Location:* ${eventLocation}` : '',
-      guestCount ? `*Guests:* ${guestCount}` : '',
-      '',
-      `━━━ ITEMS ━━━`,
-      ...lineItems
-        .filter((it) => it.total > 0 || it.description)
-        .map((it) => `• ${it.description} × ${it.qty} ${it.unit} = ${fmt(it.total)}`),
-      '',
-      subtotal !== total ? `Sub Total: ${fmt(subtotal)}` : '',
-      deliveryCharge > 0 ? `Delivery: ${fmt(deliveryCharge)}` : '',
-      totalDiscount > 0 ? `Discount: -${fmt(totalDiscount)} ${discountNote ? `(${discountNote})` : ''}` : '',
-      taxRate > 0 ? `Tax (${taxRate}%): ${fmt(taxAmount)}` : '',
-      `━━━━━━━━━━━━━━━━━━━━━━`,
-      `*TOTAL: ${fmt(total)}*`,
-      upiId ? `💳 Pay via UPI: *${upiId}*` : '',
-      bankDetails ? `🏦 Bank transfer:\n${bankDetails}` : '',
-      notes ? `\n📝 ${notes}` : '',
-      '',
-      `Thank you for choosing Shri Ganapathi Mess! 🙏`,
-    ];
-    return lines.filter(Boolean).join('\n');
+  /* ── open the PDF in a new tab (replaces the old text-message preview) ── */
+  const handlePreviewPdf = async () => {
+    // Open the tab synchronously (inside the click) so pop-up blockers allow
+    // it, then point it at the PDF once the invoice is saved.
+    const tab = window.open('', '_blank');
+    const saved = await ensureSaved();
+    if (!saved) { tab?.close(); return; }
+    const url = `/api/admin/invoices/${saved.id}/pdf`;
+    if (tab) tab.location.href = url;
+    else window.open(url, '_blank');
   };
+
+  const shareMessage: Record<string, { text: string; tone: 'info' | 'ok' | 'error' } | undefined> = {
+    preparing: { text: 'Preparing the invoice PDF…', tone: 'info' },
+    'tap-again': { text: 'The PDF is ready — tap “Send PDF via WhatsApp” again to choose the chat.', tone: 'info' },
+    shared: { text: '✅ Invoice PDF handed to WhatsApp. Choose the customer’s chat and send.', tone: 'ok' },
+    downloaded: { text: '✅ PDF downloaded and WhatsApp opened — attach the downloaded PDF in the customer’s chat.', tone: 'ok' },
+    error: { text: 'Could not prepare the invoice PDF. Please try again.', tone: 'error' },
+  };
+  const shareNote = shareMessage[pdfShare.state];
 
   const inputClass =
     'w-full px-3 py-2 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent';
@@ -607,27 +619,6 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
         </div>
       </section>
 
-      {/* ── WhatsApp Preview ── */}
-      {showPreview && (
-        <section className="bg-[#ECE5DD] rounded-xl border border-[#d4c9b0] p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display text-base font-bold text-[var(--color-brown-900)]">
-              📱 WhatsApp Message Preview
-            </h3>
-            <button 
-              onClick={() => setShowPreview(false)} 
-              className="text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
-              aria-label="Hide preview"
-            >
-              <ChevronUp size={18} />
-            </button>
-          </div>
-          <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm font-mono text-xs sm:text-sm text-[var(--color-brown-900)] whitespace-pre-wrap leading-relaxed break-words">
-            {buildWhatsAppText()}
-          </div>
-        </section>
-      )}
-
       {/* ── Action Bar ── */}
       <div className="sticky bottom-4 z-20">
         <div className="bg-white border border-[var(--color-ivory-300)] rounded-2xl shadow-xl p-3 sm:p-4">
@@ -646,11 +637,12 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
 
             <button
               type="button"
-              onClick={() => setShowPreview((v) => !v)}
+              onClick={handlePreviewPdf}
+              disabled={saving}
               className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-[var(--color-brown-700)] border border-[var(--color-ivory-300)] hover:bg-[var(--color-ivory-100)] transition-colors min-h-[44px]"
             >
               <FileText size={16} />
-              {showPreview ? 'Hide' : 'Preview'}
+              Preview PDF
             </button>
 
             <button
@@ -666,12 +658,12 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
             <button
               type="button"
               onClick={handleWhatsApp}
-              disabled={sending || !customerPhone}
-              title={!customerPhone ? 'Enter customer phone first' : 'Send invoice via WhatsApp'}
+              disabled={sending || saving}
+              title="Send the invoice PDF via WhatsApp"
               className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1da851] transition-colors disabled:opacity-50 min-h-[44px] sm:col-span-2 lg:col-span-1"
             >
               <MessageCircle size={16} />
-              {sending ? 'Sending…' : 'Send via WhatsApp'}
+              {sending ? 'Preparing PDF…' : pdfShare.state === 'tap-again' ? 'Tap to send PDF' : 'Send PDF via WhatsApp'}
             </button>
 
             {/* Cancel Invoice — only shown for already-saved invoices */}
@@ -687,6 +679,26 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
               </button>
             )}
           </div>
+
+          {/* PDF-share status */}
+          {shareNote && (
+            <p
+              role={shareNote.tone === 'error' ? 'alert' : 'status'}
+              className={`mt-3 font-body text-sm ${
+                shareNote.tone === 'error' ? 'text-red-700' : shareNote.tone === 'ok' ? 'text-green-800' : 'text-[var(--color-brown-600)]'
+              }`}
+            >
+              {shareNote.text}
+              {pdfShare.state === 'downloaded' && pdfShare.chatUrl && (
+                <>
+                  {' '}
+                  <a href={pdfShare.chatUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                    Open WhatsApp chat
+                  </a>
+                </>
+              )}
+            </p>
+          )}
         </div>
       </div>
 

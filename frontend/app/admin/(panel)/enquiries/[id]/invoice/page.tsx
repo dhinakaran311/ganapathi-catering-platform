@@ -145,10 +145,7 @@ export default async function EnquiryInvoicePage({
 
       {/* Share actions — PDF + WhatsApp (only when an invoice exists) */}
       {existingInvoice && (
-        <InvoiceShareActions
-          invoice={existingInvoice as import('@/types/invoice').Invoice}
-          paymentDefaults={paymentDefaults}
-        />
+        <InvoiceShareActions invoice={existingInvoice as import('@/types/invoice').Invoice} />
       )}
 
       {/* Payment Panel — only shown when an invoice has been saved */}
