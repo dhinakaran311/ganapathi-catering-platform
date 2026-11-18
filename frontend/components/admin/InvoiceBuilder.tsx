@@ -1,14 +1,14 @@
 'use client';
 
 // components/admin/InvoiceBuilder.tsx — Phase 5: Full Invoice Generator
-// Admin fills in this form → previews the invoice PDF → saves to DB → sends the
-// PDF via WhatsApp (share sheet on phones; download + chat elsewhere).
+// Admin fills in this form → previews the invoice PDF → saves to DB → opens the
+// customer's own WhatsApp chat with a secure PDF link pre-filled (tap Send).
 
 import { useState, useCallback, useRef } from 'react';
 import { Plus, Trash2, MessageCircle, Save, FileText, Copy, XCircle } from 'lucide-react';
 import type { InvoiceLineItem, InvoiceData } from '@/types/invoice';
 import CancelInvoiceModal from '@/components/admin/CancelInvoiceModal';
-import { useInvoicePdfShare } from '@/components/admin/useInvoicePdfShare';
+import { useInvoiceWhatsApp, openWhatsAppTab, toWaNumber } from '@/components/admin/useInvoiceWhatsApp';
 import { resolvePaymentDetails, type PaymentDetails } from '@/lib/invoice/payment-details';
 
 // Used only when Settings → Payment has no UPI id saved (previous behaviour).
@@ -63,7 +63,7 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   const [savedInvoiceNumber, setSavedInvoiceNumber] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const pdfShare = useInvoicePdfShare();
+  const whatsapp = useInvoiceWhatsApp();
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const [customerName, setCustomerName] = useState(defaultData?.customerName ?? '');
@@ -177,7 +177,6 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
       setSuccessMsg(`✅ Invoice ${json.invoice_number} saved!`);
       onSaved?.(json.id, json.invoice_number);
       savedSnapshotRef.current = formSnapshot();
-      pdfShare.reset(); // any prepared PDF is now out of date
       return { id: json.id as string, number: (json.invoice_number as string) ?? '' };
     } catch (e: unknown) {
       setErrorMsg(e instanceof Error ? e.message : 'Save failed');
@@ -194,19 +193,27 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
     return handleSave();
   };
 
-  /* ── send the invoice PDF via WhatsApp (no text invoice) ── */
+  /* ── send to the customer's own WhatsApp chat: message + secure PDF link
+        pre-filled, the admin only taps Send ── */
   const handleWhatsApp = async () => {
     setErrorMsg('');
+    if (!toWaNumber(customerPhone)) {
+      setErrorMsg('Enter the customer’s 10-digit WhatsApp number first.');
+      return;
+    }
+    const tab = openWhatsAppTab(); // must happen inside the click
     const saved = await ensureSaved();
-    if (!saved) return;
+    if (!saved) { tab?.close(); return; }
 
     setSending(true);
     try {
-      const sent = await pdfShare.share({
+      const sent = await whatsapp.send({
         invoiceId: saved.id,
         invoiceNumber: saved.number,
         customerPhone,
-      });
+        customerName,
+        total,
+      }, tab);
       // Mark as SENT in DB (triggers INVOICE_SENT audit on the server)
       if (sent) {
         await fetch('/api/admin/invoices', {
@@ -233,13 +240,12 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
   };
 
   const shareMessage: Record<string, { text: string; tone: 'info' | 'ok' | 'error' } | undefined> = {
-    preparing: { text: 'Preparing the invoice PDF…', tone: 'info' },
-    'tap-again': { text: 'The PDF is ready — tap “Send PDF via WhatsApp” again to choose the chat.', tone: 'info' },
-    shared: { text: '✅ Invoice PDF handed to WhatsApp. Choose the customer’s chat and send.', tone: 'ok' },
-    downloaded: { text: '✅ PDF downloaded and WhatsApp opened — attach the downloaded PDF in the customer’s chat.', tone: 'ok' },
-    error: { text: 'Could not prepare the invoice PDF. Please try again.', tone: 'error' },
+    preparing: { text: 'Opening the customer’s WhatsApp chat…', tone: 'info' },
+    opened: { text: '✅ The customer’s chat is open with the invoice PDF link — just tap Send in WhatsApp.', tone: 'ok' },
+    blocked: { text: 'Your browser blocked the new tab.', tone: 'info' },
+    error: { text: 'Could not open WhatsApp for this invoice. Check the customer’s number and try again.', tone: 'error' },
   };
-  const shareNote = shareMessage[pdfShare.state];
+  const shareNote = shareMessage[whatsapp.state];
 
   const inputClass =
     'w-full px-3 py-2 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-sm text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent';
@@ -658,12 +664,12 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
             <button
               type="button"
               onClick={handleWhatsApp}
-              disabled={sending || saving}
-              title="Send the invoice PDF via WhatsApp"
+              disabled={sending || saving || !customerPhone}
+              title={!customerPhone ? 'Enter customer phone first' : 'Open the customer’s WhatsApp chat with the invoice PDF link'}
               className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1da851] transition-colors disabled:opacity-50 min-h-[44px] sm:col-span-2 lg:col-span-1"
             >
               <MessageCircle size={16} />
-              {sending ? 'Preparing PDF…' : pdfShare.state === 'tap-again' ? 'Tap to send PDF' : 'Send PDF via WhatsApp'}
+              {sending ? 'Opening WhatsApp…' : 'Send via WhatsApp'}
             </button>
 
             {/* Cancel Invoice — only shown for already-saved invoices */}
@@ -689,11 +695,11 @@ export default function InvoiceBuilder({ enquiryId, defaultData, existingInvoice
               }`}
             >
               {shareNote.text}
-              {pdfShare.state === 'downloaded' && pdfShare.chatUrl && (
+              {whatsapp.state === 'blocked' && whatsapp.chatUrl && (
                 <>
                   {' '}
-                  <a href={pdfShare.chatUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
-                    Open WhatsApp chat
+                  <a href={whatsapp.chatUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">
+                    Tap here to open the customer’s chat
                   </a>
                 </>
               )}

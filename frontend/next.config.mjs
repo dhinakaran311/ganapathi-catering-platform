@@ -53,6 +53,7 @@ const nextConfig = {
   // sure they are shipped with that serverless function.
   outputFileTracingIncludes: {
     '/api/admin/invoices/*/pdf': ['./assets/fonts/**/*'],
+    '/api/invoice-pdf/*': ['./assets/fonts/**/*'],
   },
 
   async headers() {
