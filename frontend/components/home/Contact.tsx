@@ -1,11 +1,21 @@
 'use client';
 
+// components/home/Contact.tsx — Enquiry form + direct contact (#contact).
+// The submit flow is unchanged: build the WhatsApp message, save to
+// /api/enquiries in the background (honeypot + Turnstile), open WhatsApp,
+// clear the autosaved draft and show the confirmation.
+
+
 import { useTranslations, useLocale } from 'next-intl';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { generateWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics/track';
 import TurnstileWidget from '@/components/shared/TurnstileWidget';
+import { Phone } from 'lucide-react';
+import Reveal from '@/components/site/Reveal';
+import { WhatsAppIcon } from '@/components/site/icons';
+import { SITE } from '@/lib/site';
 
 interface ContactFormData {
   name: string;
@@ -20,6 +30,28 @@ interface ContactFormData {
 }
 
 const FORM_STORAGE_KEY = 'sgm_enquiry_form';
+
+// Option VALUES are sent to WhatsApp / the API exactly as before.
+const EVENT_OPTIONS = [
+  'Wedding / திருமணம்',
+  'Ear Piercing / காதுகுத்து',
+  'Engagement / நிச்சயம்',
+  'House Warming / புதுமனை',
+  'Baby Shower / சீமந்தம்',
+  'Birthday / பிறந்தநாள்',
+  'Family Function / குடும்ப விழா',
+  'Corporate / கார்ப்பரேட்',
+  'School / College Event',
+  'Temple Function / கோவில் நிகழ்ச்சி',
+  'Bulk Order / மொத்த ஆர்டர்',
+];
+const GUEST_OPTIONS = ['30-50', '50-100', '100-200', '200-300', '300-500', '500+'];
+
+/** Today's date (YYYY-MM-DD) in the visitor's own time zone. */
+function todayLocal(): string {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+}
 
 const defaultForm: ContactFormData = {
   name: '',
@@ -36,6 +68,7 @@ const defaultForm: ContactFormData = {
 export default function Contact() {
   const t = useTranslations('Contact');
   const locale = useLocale();
+  const s = useTranslations('Site.contact');
   const [formData, setFormData] = useState<ContactFormData>(defaultForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -132,351 +165,192 @@ export default function Contact() {
     }));
   };
 
+  const card = (label: string, children: React.ReactNode) => (
+    <div>
+      <dt className="text-[0.85rem] font-semibold text-[var(--site-on-dark-soft)]">{label}</dt>
+      <dd className="mt-1 whitespace-pre-line text-[1.02rem] leading-relaxed text-[var(--site-on-dark)]">{children}</dd>
+    </div>
+  );
+
   return (
-    <section id="contact" className="py-16 md:py-24 bg-white">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12">
+    <section id="contact" aria-labelledby="contact-title" className="s-section s-deep">
+      <div className="s-container">
+        <Reveal className="max-w-[760px]">
+          <h2 id="contact-title" className="s-h2 text-[var(--site-leaf-deep)]">{t('heading')}</h2>
+          <p className="s-lead mt-5">{t('subheading')}</p>
+        </Reveal>
 
-        {/* Header */}
-        <div className="text-center max-w-[680px] mx-auto mb-12 md:mb-16">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-4">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-            {t('label')}
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-          </span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-brown-900)] leading-[1.15] mb-3">
-            {t('heading')}
-          </h2>
-          <p className="font-body text-base md:text-lg text-[var(--color-brown-600)] italic">
-            {t('subheading')}
-          </p>
-        </div>
+        <div className="mt-14 grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+          {/* Enquiry form */}
+          <Reveal className="rounded-[28px] bg-[var(--site-paper)] p-6 sm:p-8 md:p-10">
+            <h3 className="s-h3 text-[var(--site-leaf-deep)]">{t('formTitle')}</h3>
 
-        <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
-
-          {/* Left Column — Service Areas + Form */}
-          <div className="space-y-8">
-
-            {/* Service Areas */}
-            <div className="bg-[var(--color-ivory-100)] rounded-2xl p-6 md:p-8 border border-[var(--color-ivory-300)]">
-              <h3 className="font-display text-xl md:text-2xl font-bold text-[var(--color-brown-900)] mb-3">
-                {t('areasTitle')}
-              </h3>
-              <p className="font-body text-sm md:text-base text-[var(--color-brown-600)] mb-4">
-                {t('areasDesc')}
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {(t.raw('areas') as string[]).map((area, index) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-lg px-4 py-3 font-body text-sm text-[var(--color-brown-700)] border border-[var(--color-ivory-300)]"
-                  >
-                    {area}
-                  </div>
-                ))}
+            <form onSubmit={handleSubmit} className="relative mt-7 grid gap-5 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label htmlFor="name" className="s-label">
+                  {t('form.name')} <span aria-hidden="true" className="text-[var(--site-chilli)]">*</span>
+                </label>
+                <input
+                  type="text" id="name" name="name" required autoComplete="name"
+                  value={formData.name} onChange={handleChange}
+                  placeholder={t('form.placeholders.name')} className="s-field"
+                />
               </div>
-              <p className="font-body text-xs text-[var(--color-brown-500)] italic mt-4">
-                {t('areasNote')}
-              </p>
-            </div>
 
-            {/* Contact Form */}
-            <div className="bg-[var(--color-ivory-100)] rounded-2xl p-6 md:p-8 border border-[var(--color-ivory-300)]">
-              <h3 className="font-display text-xl md:text-2xl font-bold text-[var(--color-brown-900)] mb-6">
-                {t('formTitle')}
-              </h3>
+              <div>
+                <label htmlFor="phone" className="s-label">
+                  {t('form.phone')} <span aria-hidden="true" className="text-[var(--site-chilli)]">*</span>
+                </label>
+                <input
+                  type="tel" id="phone" name="phone" required inputMode="tel" autoComplete="tel"
+                  value={formData.phone} onChange={handleChange}
+                  placeholder={t('form.placeholders.phone')} className="s-field"
+                />
+              </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Name */}
-                <div>
-                  <label htmlFor="name" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                    {t('form.name')} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text" id="name" name="name" required
-                    value={formData.name} onChange={handleChange}
-                    placeholder={t('form.placeholders.name')}
-                    className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] placeholder:text-[var(--color-brown-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                  />
-                </div>
+              <div>
+                <label htmlFor="event" className="s-label">
+                  {t('form.event')} <span aria-hidden="true" className="text-[var(--site-chilli)]">*</span>
+                </label>
+                <select id="event" name="event" required value={formData.event} onChange={handleChange} className="s-field">
+                  <option value="">{t('form.placeholders.event')}</option>
+                  {EVENT_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
 
-                {/* Phone */}
-                <div>
-                  <label htmlFor="phone" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                    {t('form.phone')} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel" id="phone" name="phone" required
-                    value={formData.phone} onChange={handleChange}
-                    placeholder={t('form.placeholders.phone')}
-                    className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] placeholder:text-[var(--color-brown-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                  />
-                </div>
+              <div>
+                <label htmlFor="guests" className="s-label">
+                  {t('form.guests')} <span aria-hidden="true" className="text-[var(--site-chilli)]">*</span>
+                </label>
+                <select id="guests" name="guests" required value={formData.guests} onChange={handleChange} className="s-field">
+                  <option value="">{t('form.placeholders.guests')}</option>
+                  {GUEST_OPTIONS.map((v) => <option key={v} value={v}>{v.replace('-', ' – ')}</option>)}
+                </select>
+              </div>
 
-                {/* Event Type */}
-                <div>
-                  <label htmlFor="event" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                    {t('form.event')} <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="event" name="event" required
-                    value={formData.event} onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                  >
-                    <option value="">{t('form.placeholders.event')}</option>
-                    <option value="Wedding / திருமணம்">Wedding / திருமணம்</option>
-                    <option value="Ear Piercing / காதுகுத்து">Ear Piercing / காதுகுத்து</option>
-                    <option value="Engagement / நிச்சயம்">Engagement / நிச்சயம்</option>
-                    <option value="House Warming / புதுமனை">House Warming / புதுமனை</option>
-                    <option value="Baby Shower / சீமந்தம்">Baby Shower / சீமந்தம்</option>
-                    <option value="Birthday / பிறந்தநாள்">Birthday / பிறந்தநாள்</option>
-                    <option value="Family Function / குடும்ப விழா">Family Function / குடும்ப விழா</option>
-                    <option value="Corporate / கார்ப்பரேட்">Corporate / கார்ப்பரேட்</option>
-                    <option value="School / College Event">School / College Event</option>
-                    <option value="Temple Function / கோவில் நிகழ்ச்சி">Temple Function / கோவில் நிகழ்ச்சி</option>
-                    <option value="Bulk Order / மொத்த ஆர்டர்">Bulk Order / மொத்த ஆர்டர்</option>
-                  </select>
-                </div>
+              <div>
+                <label htmlFor="foodType" className="s-label">{t('form.foodType')}</label>
+                <select id="foodType" name="foodType" value={formData.foodType} onChange={handleChange} className="s-field">
+                  <option value="">{s('select')}</option>
+                  <option value="Vegetarian">{s('veg')}</option>
+                  <option value="Non-Vegetarian">{s('nonveg')}</option>
+                  <option value="Both">{s('both')}</option>
+                </select>
+              </div>
 
-                {/* Guests + Food Type row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="guests" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                      {t('form.guests')} <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      id="guests" name="guests" required
-                      value={formData.guests} onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                    >
-                      <option value="">{t('form.placeholders.guests')}</option>
-                      <option value="30-50">30 – 50</option>
-                      <option value="50-100">50 – 100</option>
-                      <option value="100-200">100 – 200</option>
-                      <option value="200-300">200 – 300</option>
-                      <option value="300-500">300 – 500</option>
-                      <option value="500+">500+</option>
-                    </select>
-                  </div>
+              <div>
+                <label htmlFor="eventDate" className="s-label">{t('form.eventDate')}</label>
+                <input
+                  type="date" id="eventDate" name="eventDate"
+                  value={formData.eventDate} onChange={handleChange}
+                  min={todayLocal()} suppressHydrationWarning
+                  className="s-field"
+                />
+              </div>
 
-                  <div>
-                    <label htmlFor="foodType" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                      {t('form.foodType')}
-                    </label>
-                    <select
-                      id="foodType" name="foodType"
-                      value={formData.foodType} onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                    >
-                      <option value="">Select</option>
-                      <option value="Vegetarian">🌱 Vegetarian</option>
-                      <option value="Non-Vegetarian">🍗 Non-Vegetarian</option>
-                      <option value="Both">🌱🍗 Both</option>
-                    </select>
-                  </div>
-                </div>
+              <div>
+                <label htmlFor="eventLocation" className="s-label">{t('form.eventLocation')}</label>
+                <input
+                  type="text" id="eventLocation" name="eventLocation" autoComplete="address-level2"
+                  value={formData.eventLocation} onChange={handleChange}
+                  placeholder={t('form.placeholders.eventLocation')} className="s-field"
+                />
+              </div>
 
-                {/* Event Date + Location row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="eventDate" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                      {t('form.eventDate')}
-                    </label>
-                    <input
-                      type="date" id="eventDate" name="eventDate"
-                      value={formData.eventDate} onChange={handleChange}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                    />
-                  </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="customItems" className="s-label">{t('form.customItems')}</label>
+                <input
+                  type="text" id="customItems" name="customItems"
+                  value={formData.customItems} onChange={handleChange}
+                  placeholder={t('form.placeholders.customItems')} className="s-field"
+                />
+              </div>
 
-                  <div>
-                    <label htmlFor="eventLocation" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                      {t('form.eventLocation')}
-                    </label>
-                    <input
-                      type="text" id="eventLocation" name="eventLocation"
-                      value={formData.eventLocation} onChange={handleChange}
-                      placeholder={t('form.placeholders.eventLocation')}
-                      className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] placeholder:text-[var(--color-brown-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                    />
-                  </div>
-                </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="message" className="s-label">{t('form.message')}</label>
+                <textarea
+                  id="message" name="message" rows={3}
+                  value={formData.message} onChange={handleChange}
+                  placeholder={t('form.placeholders.message')} className="s-field resize-none"
+                />
+              </div>
 
-                {/* Custom items (D25) */}
-                <div>
-                  <label htmlFor="customItems" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                    {t('form.customItems')}
-                  </label>
-                  <input
-                    type="text" id="customItems" name="customItems"
-                    value={formData.customItems} onChange={handleChange}
-                    placeholder={t('form.placeholders.customItems')}
-                    className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] placeholder:text-[var(--color-brown-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent"
-                  />
-                </div>
+              {/* Honeypot — invisible to people and screen readers; bots fill it. */}
+              <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden">
+                <label htmlFor="contact-website">Website</label>
+                <input
+                  type="text" id="contact-website" name="website"
+                  tabIndex={-1} autoComplete="off"
+                  value={honeypot} onChange={(e) => setHoneypot(e.target.value)}
+                />
+              </div>
 
-                {/* Message */}
-                <div>
-                  <label htmlFor="message" className="block font-body text-sm font-semibold text-[var(--color-brown-800)] mb-2">
-                    {t('form.message')}
-                  </label>
-                  <textarea
-                    id="message" name="message" rows={3}
-                    value={formData.message} onChange={handleChange}
-                    placeholder={t('form.placeholders.message')}
-                    className="w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] placeholder:text-[var(--color-brown-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent resize-none"
-                  />
-                </div>
-
-                {/* Honeypot — invisible to people and screen readers; bots fill it. */}
-                <div aria-hidden="true" className="absolute -left-[9999px] top-auto w-px h-px overflow-hidden">
-                  <label htmlFor="contact-website">Website</label>
-                  <input
-                    type="text" id="contact-website" name="website"
-                    tabIndex={-1} autoComplete="off"
-                    value={honeypot} onChange={(e) => setHoneypot(e.target.value)}
-                  />
-                </div>
-
+              <div className="sm:col-span-2">
                 <TurnstileWidget key={turnstileKey} onToken={setTurnstileToken} />
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full inline-flex items-center justify-center gap-2 px-8 h-14 rounded-md font-body text-base font-semibold bg-[#25D366] text-white transition-all hover:bg-[#1da851] hover:-translate-y-px shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <span>💬</span>
-                  {isSubmitting ? 'Opening WhatsApp...' : t('form.submit')}
+                <button type="submit" disabled={isSubmitting} className="s-btn s-btn-primary w-full">
+                  <WhatsAppIcon size={20} />
+                  {isSubmitting ? s('sending') : t('form.submit')}
                 </button>
-
-                <p className="font-body text-xs text-center text-[var(--color-brown-500)]">
-                  {t('form.note')}
-                </p>
-              </form>
-            </div>
-          </div>
-
-          {/* Right Column — Contact Info Card */}
-          <div>
-            <div className="sticky top-8 bg-gradient-to-br from-[var(--color-green-900)] to-[var(--color-green-800)] rounded-2xl p-8 md:p-10 text-white shadow-xl">
-              <h3 className="font-display text-2xl md:text-3xl font-bold mb-8">
-                {t('cardHeading')}
-              </h3>
-
-              <div className="space-y-6">
-                {/* Phone */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xl">📞</div>
-                  <div>
-                    <div className="font-body text-sm font-semibold text-white/70 mb-1">{t('card.phone')}</div>
-                    <a href="tel:+919942351280" className="font-body text-lg font-semibold text-white hover:text-[var(--color-gold-300)] transition-colors">
-                      +91 99423 51280
-                    </a>
-                  </div>
-                </div>
-
-                {/* WhatsApp */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xl">💬</div>
-                  <div>
-                    <div className="font-body text-sm font-semibold text-white/70 mb-1">{t('card.whatsapp')}</div>
-                    <a href="https://wa.me/919942351280" target="_blank" rel="noopener noreferrer" className="font-body text-lg font-semibold text-white hover:text-[var(--color-gold-300)] transition-colors">
-                      +91 99423 51280
-                    </a>
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xl">📍</div>
-                  <div>
-                    <div className="font-body text-sm font-semibold text-white/70 mb-1">{t('card.address')}</div>
-                    <p className="font-body text-base text-white leading-relaxed whitespace-pre-line">
-                      {t('card.addressText')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Hours */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xl">⏰</div>
-                  <div>
-                    <div className="font-body text-sm font-semibold text-white/70 mb-1">{t('card.hours')}</div>
-                    <p className="font-body text-base text-white leading-relaxed whitespace-pre-line">
-                      {t('card.hoursText')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Capacity */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xl">👥</div>
-                  <div>
-                    <div className="font-body text-sm font-semibold text-white/70 mb-1">{t('card.capacity')}</div>
-                    <p className="font-body text-base text-white leading-relaxed">
-                      {t('card.capacityText')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Delivery */}
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 text-xl">🚚</div>
-                  <div>
-                    <div className="font-body text-sm font-semibold text-white/70 mb-1">{t('card.delivery')}</div>
-                    <p className="font-body text-sm text-white leading-relaxed">
-                      {t('card.deliveryText')}
-                    </p>
-                  </div>
-                </div>
+                <p className="mt-3 text-center text-[0.88rem] text-[var(--site-ink-muted)]">{t('form.note')}</p>
               </div>
+            </form>
+          </Reveal>
 
-              {/* CTA */}
+          {/* Direct contact */}
+          <Reveal delay={100} className="rounded-[28px] bg-[var(--site-leaf-deep)] p-7 sm:p-9 lg:sticky lg:top-[calc(var(--site-header)+32px)] lg:self-start">
+            <h3 className="s-h3 text-[var(--site-on-dark)]">{t('cardHeading')}</h3>
+
+            <div className="mt-6 grid gap-3">
+              <a href={SITE.phoneTel} className="s-btn s-btn-on-dark justify-start">
+                <Phone size={18} aria-hidden="true" />
+                {SITE.phoneDisplay}
+              </a>
               <a
-                href="https://wa.me/919942351280"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-8 w-full inline-flex items-center justify-center gap-2 px-8 h-14 rounded-md font-body text-base font-semibold bg-white text-[var(--color-green-900)] transition-all hover:bg-[var(--color-gold-200)] hover:-translate-y-px shadow-sm hover:shadow-md"
+                href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer"
+                onClick={() => track({ event: 'whatsapp_open', metadata: { source: 'contact_card' } })}
+                className="s-btn s-btn-brass justify-start"
               >
-                💬 {t('card.enquireNow')}
+                <WhatsAppIcon size={18} />
+                {t('card.enquireNow')}
               </a>
             </div>
-          </div>
 
+            <dl className="mt-9 grid gap-6">
+              {card(t('card.address'), t('card.addressText'))}
+              {card(t('card.hours'), t('card.hoursText'))}
+              {card(t('card.capacity'), t('card.capacityText'))}
+              {card(t('card.delivery'), t('card.deliveryText'))}
+            </dl>
+            <p className="mt-6 text-[0.88rem] leading-relaxed text-[var(--site-on-dark-soft)]">{t('areasNote')}</p>
+          </Reveal>
         </div>
-
       </div>
 
-      {/* Success Popup Modal */}
+      {/* Success dialog */}
       {showSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button
-              onClick={() => setShowSuccess(false)}
-              className="absolute top-4 right-4 text-[var(--color-brown-400)] hover:text-[var(--color-brown-900)] text-2xl leading-none"
-            >
-              &times;
-            </button>
-            <div className="w-16 h-16 rounded-full bg-[var(--color-green-100)] flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
-              ✅
-            </div>
-            <h3 className="font-display text-2xl font-bold text-[var(--color-brown-900)] text-center mb-2">
-              Enquiry Sent!
-            </h3>
-            <p className="font-body text-sm text-[var(--color-brown-600)] text-center mb-6">
-              WhatsApp opened on your device. Just hit send, and we will reply with a quote within 2 hours.
-            </p>
-            <Link
-              href={`/${locale}/quote/success`}
-              className="block w-full text-center font-body text-sm font-semibold text-[var(--color-green-800)] hover:underline mb-3"
-            >
-              What happens next? →
+        <div
+          className="fixed inset-0 z-[900] flex items-end justify-center bg-[rgba(13,38,17,0.55)] p-4 sm:items-center"
+          onClick={() => setShowSuccess(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="enquiry-sent-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-[28px] bg-[var(--site-paper)] p-8"
+          >
+            <h3 id="enquiry-sent-title" className="s-h3 text-[var(--site-leaf-deep)]">{s('successTitle')}</h3>
+            <p className="mt-3 text-[1rem] leading-relaxed text-[var(--site-ink-soft)]">{s('successBody')}</p>
+            <Link href={`/${locale}/quote/success`} className="s-link mt-5 inline-block text-[var(--site-leaf)]">
+              {s('next')}
             </Link>
             <button
+              type="button"
+              autoFocus
               onClick={() => setShowSuccess(false)}
-              className="w-full h-12 rounded-lg font-body text-sm font-semibold bg-[var(--color-green-800)] text-white hover:bg-[var(--color-green-900)] transition-colors"
+              className="s-btn s-btn-primary mt-7 w-full"
             >
-              Got it
+              {s('ok')}
             </button>
           </div>
         </div>

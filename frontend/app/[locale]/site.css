@@ -1,0 +1,267 @@
+/* =============================================================================
+   app/[locale]/site.css — Public website design layer
+   -----------------------------------------------------------------------------
+   Art direction: "banana-leaf editorial" — ivory paper, leaf-green ink, brass
+   accents, big serif type with Tamil as a display face, arch-cropped photos
+   (temple mandapam arches), full-bleed colour blocks instead of cards.
+
+   Loaded ONLY by app/[locale]/layout.tsx and scoped under `.site` (the public
+   <body>), so the admin panel is untouched. Classes live in the `components`
+   layer so Tailwind utilities can still override them.
+   ============================================================================= */
+
+@layer components {
+  .site {
+    /* ── Palette (derived from the existing brand tokens) ─────────────────── */
+    --site-paper:       #FBF7F0;  /* ivory-200 */
+    --site-paper-deep:  #F2EADC;
+    --site-field:       #F0E6D4;  /* form fields (filled, no hairlines) */
+    --site-ink:         #14200F;
+    --site-ink-soft:    #4C4536;
+    --site-ink-muted:   #6E6553;
+    --site-leaf:        #1A3D20;  /* green-800 */
+    --site-leaf-deep:   #0D2611;  /* green-900 */
+    --site-leaf-bright: #2F6B3A;
+    --site-brass:       #B8860B;  /* gold-600 — large type / marks only */
+    --site-brass-text:  #7A580A;  /* gold-800 — passes AA on paper */
+    --site-brass-light: #E9C46A;  /* on dark green */
+    --site-on-dark:     #F4EEDF;
+    --site-on-dark-soft:#C9C4B0;
+    --site-chilli:      #9C3418;
+
+    /* ── Type ─────────────────────────────────────────────────────────────── */
+    --site-serif: var(--font-serif-latin), var(--font-serif-tamil), Georgia, serif;
+    --site-sans:  var(--font-body), var(--font-tamil), system-ui, sans-serif;
+
+    /* ── Layout ───────────────────────────────────────────────────────────── */
+    --site-gutter: clamp(20px, 5vw, 56px);
+    --site-max:    1240px;
+    --site-header: 72px;
+
+    font-family: var(--site-sans);
+    background-color: var(--site-paper);
+    color: var(--site-ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Leftover `font-display` utilities on the public site use the new serif. */
+  .site .font-display { font-family: var(--site-serif); }
+
+  .site :focus-visible {
+    outline: 3px solid var(--site-brass);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  .site ::selection { background: var(--site-brass-light); color: var(--site-leaf-deep); }
+
+  /* ── Layout primitives ─────────────────────────────────────────────────── */
+  .s-container {
+    width: 100%;
+    max-width: calc(var(--site-max) + 2 * var(--site-gutter));
+    margin-inline: auto;
+    padding-inline: var(--site-gutter);
+  }
+
+  .s-section {
+    padding-block: clamp(72px, 10vw, 136px);
+    scroll-margin-top: var(--site-header);
+  }
+
+  .s-dark {
+    background-color: var(--site-leaf-deep);
+    color: var(--site-on-dark);
+  }
+
+  .s-deep { background-color: var(--site-paper-deep); }
+
+  /* ── Type scale ────────────────────────────────────────────────────────── */
+  .s-serif {
+    font-family: var(--site-serif);
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 60;
+  }
+
+  .s-display {
+    font-family: var(--site-serif);
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 80;
+    font-weight: 600;
+    font-size: clamp(2.6rem, 7.2vw, 6rem);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .s-h2 {
+    font-family: var(--site-serif);
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 60;
+    font-weight: 600;
+    font-size: clamp(2rem, 4.6vw, 3.6rem);
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .s-h3 {
+    font-family: var(--site-serif);
+    font-weight: 600;
+    font-size: clamp(1.3rem, 2.1vw, 1.65rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .s-lead {
+    font-size: clamp(1.05rem, 1.5vw, 1.25rem);
+    line-height: 1.65;
+    color: var(--site-ink-soft);
+    max-width: 62ch;
+    text-wrap: pretty;
+  }
+  .s-dark .s-lead { color: var(--site-on-dark-soft); }
+
+  .s-figure {
+    font-family: var(--site-serif);
+    font-weight: 600;
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    font-variant-numeric: lining-nums;
+  }
+
+  /* Tamil script needs more vertical room and slightly smaller display sizes. */
+  .site:lang(ta) .s-display { font-size: clamp(2.2rem, 5.8vw, 4.9rem); line-height: 1.22; letter-spacing: 0; }
+  .site:lang(ta) .s-h2      { font-size: clamp(1.75rem, 3.8vw, 3rem);  line-height: 1.25; letter-spacing: 0; }
+  .site:lang(ta) .s-h3      { line-height: 1.35; letter-spacing: 0; }
+  .site:lang(ta) .s-lead    { line-height: 1.8; }
+
+  /* ── Arch-cropped imagery (temple mandapam arch) ───────────────────────── */
+  .s-arch {
+    border-radius: 50% 50% 20px 20px / 32% 32% 20px 20px;
+    overflow: hidden;
+    isolation: isolate;
+    background-color: var(--site-paper-deep);
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────────────── */
+  .s-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    min-height: 52px;
+    padding: 0.85rem 1.6rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-align: center;
+    transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .s-btn:active { transform: translateY(1px) scale(0.99); }
+  .s-btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+  .s-btn-primary { background-color: var(--site-leaf); color: var(--site-on-dark); }
+  .s-btn-primary:hover { background-color: var(--site-leaf-deep); }
+
+  .s-btn-outline { box-shadow: inset 0 0 0 2px var(--site-leaf); color: var(--site-leaf); }
+  .s-btn-outline:hover { background-color: var(--site-leaf); color: var(--site-on-dark); }
+
+  .s-btn-brass { background-color: var(--site-brass-light); color: var(--site-leaf-deep); }
+  .s-btn-brass:hover { background-color: #F1D68C; }
+
+  .s-btn-on-dark { box-shadow: inset 0 0 0 2px var(--site-on-dark); color: var(--site-on-dark); }
+  .s-btn-on-dark:hover { background-color: var(--site-on-dark); color: var(--site-leaf-deep); }
+
+  /* Text link with a thick brass underline that grows on hover */
+  .s-link {
+    font-weight: 600;
+    text-decoration-line: underline;
+    text-decoration-color: var(--site-brass);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 5px;
+    transition: text-decoration-thickness 160ms ease, color 160ms ease;
+  }
+  .s-link:hover { text-decoration-thickness: 4px; }
+
+  /* ── Form fields: filled, no hairline borders ──────────────────────────── */
+  .s-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.92rem;
+    margin-bottom: 0.45rem;
+    color: var(--site-ink);
+  }
+  .s-field {
+    width: 100%;
+    min-height: 52px;
+    padding: 0.8rem 1rem;
+    border-radius: 14px;
+    background-color: var(--site-field);
+    color: var(--site-ink);
+    font-size: 1rem; /* ≥16px: no iOS zoom on focus */
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+  .s-field::placeholder { color: var(--site-ink-muted); opacity: 1; }
+  .s-field:hover { background-color: #EBDFC9; }
+  .s-field:focus { outline: none; background-color: #FFFDF8; box-shadow: inset 0 0 0 2px var(--site-leaf); }
+  select.s-field {
+    appearance: none;
+    padding-right: 2.6rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%231A3D20' stroke-width='2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+  }
+
+  /* ── Indian food marks (veg / egg / non-veg), as printed on menus ──────── */
+  .s-mark {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 15px;
+    height: 15px;
+    border: 2px solid currentColor;
+    border-radius: 3px;
+  }
+  .s-mark::after { content: ""; width: 7px; height: 7px; background: currentColor; }
+  .s-mark-veg    { color: #1E7B34; }
+  .s-mark-veg::after { border-radius: 50%; }
+  .s-mark-egg    { color: #B07A12; }
+  .s-mark-egg::after { border-radius: 50%; }
+  .s-mark-nonveg { color: var(--site-chilli); }
+  .s-mark-nonveg::after {
+    width: 0; height: 0; background: none;
+    border-left: 4.5px solid transparent;
+    border-right: 4.5px solid transparent;
+    border-bottom: 7.5px solid currentColor;
+  }
+
+  /* ── Scroll reveal (see components/site/Reveal.tsx) ────────────────────── */
+  [data-reveal="hidden"] {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  [data-reveal="shown"] {
+    opacity: 1;
+    transform: none;
+    transition: opacity 700ms cubic-bezier(.2,.7,.2,1), transform 700ms cubic-bezier(.2,.7,.2,1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site *, .site *::before, .site *::after {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+    [data-reveal="hidden"] { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html:has(.site) { scroll-behavior: smooth; }
+  }
+}

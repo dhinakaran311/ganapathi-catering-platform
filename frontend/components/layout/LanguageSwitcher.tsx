@@ -1,31 +1,32 @@
 'use client';
 
-import { useLocale } from 'next-intl';
-import { usePathname, useRouter } from 'next/navigation';
+// components/layout/LanguageSwitcher.tsx — Tamil ⇄ English.
+// A real link (crawlable, works without JS, keeps the current page): swaps the
+// locale segment of the current path.
 
-export default function LanguageSwitcher() {
+import Link from 'next/link';
+import { useLocale, useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
+
+export default function LanguageSwitcher({ className = '' }: { className?: string }) {
   const locale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
+  const t = useTranslations('Site.nav');
+  const pathname = usePathname() || `/${locale}`;
+  const nextLocale = locale === 'ta' ? 'en' : 'ta';
 
-  const toggleLanguage = () => {
-    const nextLocale = locale === 'ta' ? 'en' : 'ta';
-    // Swap the locale prefix in the current path
-    const segments = pathname.split('/');
-    segments[1] = nextLocale; // index 1 is the locale segment: /ta/... or /en/...
-    router.push(segments.join('/') || `/${nextLocale}`);
-  };
+  const segments = pathname.split('/');
+  segments[1] = nextLocale; // /ta/... ⇄ /en/...
+  const href = segments.join('/') || `/${nextLocale}`;
 
   return (
-    <button
-      onClick={toggleLanguage}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-[var(--color-green-800)] text-[var(--color-green-800)] font-medium text-sm hover:bg-[var(--color-green-50)] transition-colors active:scale-95"
-      aria-label={locale === 'ta' ? 'Switch to English' : 'தமிழில் மாற்றுக'}
+    <Link
+      href={href}
+      hrefLang={nextLocale}
+      lang={nextLocale}
+      aria-label={t('switchLabel')}
+      className={`inline-flex min-h-[44px] items-center rounded-full px-3.5 text-[0.95rem] font-semibold text-[var(--site-leaf)] transition-colors hover:bg-[var(--site-paper-deep)] ${className}`}
     >
-      <span aria-hidden="true" className="text-base">🌐</span>
-      <span className="min-w-[40px] text-center tracking-wider">
-        {locale === 'ta' ? 'EN' : 'தமிழ்'}
-      </span>
-    </button>
+      {t('switchTo')}
+    </Link>
   );
 }

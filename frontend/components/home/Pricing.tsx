@@ -1,30 +1,19 @@
 'use client';
 
-// components/home/Pricing.tsx — Day 10: Pricing + Service Area Checker
+// components/home/Pricing.tsx — Packages, live estimate, delivery charges (#pricing).
+// Same packages, prices, estimator maths and delivery table as before.
+// Layout: the popular Full Meals package as a large dark block, the other two
+// beside it; then the estimator as a single wide band; then the area table.
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import Reveal from '@/components/site/Reveal';
 
 const PACKAGES = [
-  {
-    id: 'basic',
-    price: 90,
-    accent: false,
-    popular: false,
-  },
-  {
-    id: 'full',
-    price: 130,
-    accent: true,
-    popular: true,
-  },
-  {
-    id: 'custom',
-    price: null,
-    accent: false,
-    popular: false,
-  },
-];
+  { id: 'full', price: 130 },
+  { id: 'basic', price: 90 },
+  { id: 'custom', price: null },
+] as const;
 
 const SERVICE_AREAS = [
   { id: 'velliyangadu',       distanceKm: 0,  charge: 0 },
@@ -39,214 +28,170 @@ const SERVICE_AREAS = [
   { id: 'kangeyam',           distanceKm: 25, charge: 2500 },
 ];
 
+const formatINR = (n: number) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
 export default function Pricing() {
   const t = useTranslations('Pricing');
+  const s = useTranslations('Site.pricing');
   const [guestCount, setGuestCount] = useState(200);
   const [selectedPkg, setSelectedPkg] = useState<'basic' | 'full'>('full');
 
   const estimatedTotal = guestCount * (selectedPkg === 'basic' ? 90 : 130);
-  const formatINR = (n: number) =>
-    new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+  const renderPackage = (id: string, price: number | null, dark: boolean) => {
+    const includes: string[] = t.raw(`${id}.includes`);
+    return (
+      <>
+        <h3 className={`s-h3 ${dark ? 'text-[var(--site-on-dark)]' : 'text-[var(--site-leaf-deep)]'}`}>{t(`${id}.name`)}</h3>
+        <p className={`mt-2 text-[0.98rem] ${dark ? 'text-[var(--site-on-dark-soft)]' : 'text-[var(--site-ink-soft)]'}`}>
+          {t(`${id}.desc`)}
+        </p>
+        <p className="mt-6 flex items-baseline gap-2">
+          {price !== null ? (
+            <>
+              <span className={`s-figure !text-[clamp(2.6rem,5vw,3.8rem)] ${dark ? 'text-[var(--site-brass-light)]' : 'text-[var(--site-leaf-deep)]'}`}>
+                ₹{price}
+              </span>
+              <span className={dark ? 'text-[var(--site-on-dark-soft)]' : 'text-[var(--site-ink-muted)]'}>/ {t('perPerson')}</span>
+            </>
+          ) : (
+            <span className={`text-[1.05rem] font-semibold ${dark ? 'text-[var(--site-brass-light)]' : 'text-[var(--site-brass-text)]'}`}>
+              {t('contactUs')}
+            </span>
+          )}
+        </p>
+        <ul className="mt-6 space-y-2">
+          {includes.map((item) => (
+            <li key={item} className={`flex gap-3 text-[0.98rem] ${dark ? 'text-[var(--site-on-dark)]' : 'text-[var(--site-ink)]'}`}>
+              <span aria-hidden="true" className={`mt-[0.55em] h-1.5 w-1.5 flex-none rotate-45 ${dark ? 'bg-[var(--site-brass-light)]' : 'bg-[var(--site-brass)]'}`} />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <a href="#contact" className={`s-btn mt-8 ${dark ? 's-btn-brass' : 's-btn-outline'}`}>
+          {t('getQuote')}
+        </a>
+      </>
+    );
+  };
 
   return (
-    <section id="pricing" className="py-16 md:py-24 bg-[var(--color-ivory-200)]">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12">
+    <section id="pricing" aria-labelledby="pricing-title" className="s-section">
+      <div className="s-container">
+        <Reveal className="max-w-[760px]">
+          <h2 id="pricing-title" className="s-h2 text-[var(--site-leaf-deep)]">{t('heading')}</h2>
+          <p className="s-lead mt-5">{t('subheading')}</p>
+        </Reveal>
 
-        {/* Header */}
-        <div className="text-center max-w-[680px] mx-auto mb-12 md:mb-16">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-4">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-            {t('label')}
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-          </span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-brown-900)] leading-[1.15] mb-3">
-            {t('heading')}
-          </h2>
-          <p className="font-body text-base md:text-lg text-[var(--color-brown-600)] italic">
-            {t('subheading')}
-          </p>
-        </div>
-
-        {/* Packages */}
-        <div className="grid sm:grid-cols-3 gap-5 mb-14">
-          {PACKAGES.map((pkg) => {
-            const includes: string[] = t.raw(`${pkg.id}.includes`);
-            return (
-              <div
-                key={pkg.id}
-                className={`relative rounded-2xl p-6 border transition-all ${
-                  pkg.accent
-                    ? 'bg-[var(--color-green-900)] border-[var(--color-green-800)] text-white shadow-xl'
-                    : 'bg-white border-[var(--color-ivory-300)] hover:shadow-md'
-                }`}
-              >
-                {pkg.popular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--color-gold-600)] text-white font-body text-xs font-bold px-4 py-1 rounded-full shadow whitespace-nowrap">
-                    {t('popular')}
-                  </span>
-                )}
-                <p className={`font-body text-xs font-semibold uppercase tracking-wide mb-1 ${pkg.accent ? 'text-white/60' : 'text-[var(--color-brown-500)]'}`}>
-                  {t(`${pkg.id}.name`)}
-                </p>
-                <h3 className={`font-display text-xl font-bold mb-3 ${pkg.accent ? 'text-white' : 'text-[var(--color-brown-900)]'}`}>
-                  {t(`${pkg.id}.name`)}
-                </h3>
-
-                <div className="mb-4">
-                  {pkg.price ? (
-                    <div className="flex items-baseline gap-1">
-                      <span className={`font-display text-4xl font-bold ${pkg.accent ? 'text-[var(--color-gold-300)]' : 'text-[var(--color-gold-600)]'}`}>
-                        {formatINR(pkg.price).replace('₹', '₹')}
-                      </span>
-                      <span className={`font-body text-sm ${pkg.accent ? 'text-white/60' : 'text-[var(--color-brown-500)]'}`}>
-                        /{t('perPerson')}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className={`font-display text-2xl font-bold ${pkg.accent ? 'text-[var(--color-gold-300)]' : 'text-[var(--color-gold-600)]'}`}>
-                      {t('contactUs')}
-                    </div>
-                  )}
-                </div>
-
-                <p className={`font-body text-sm mb-5 ${pkg.accent ? 'text-white/80' : 'text-[var(--color-brown-600)]'}`}>
-                  {t(`${pkg.id}.desc`)}
-                </p>
-
-                <ul className="space-y-2 mb-6">
-                  {includes.map((item) => (
-                    <li key={item} className={`font-body text-sm flex items-start gap-2 ${pkg.accent ? 'text-white/90' : 'text-[var(--color-brown-700)]'}`}>
-                      <span className={`mt-0.5 flex-shrink-0 ${pkg.accent ? 'text-[var(--color-gold-300)]' : 'text-[var(--color-green-700)]'}`}>✓</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-
-                <a
-                  href="#contact"
-                  className={`w-full inline-flex items-center justify-center h-11 rounded-lg font-body text-sm font-semibold transition-all ${
-                    pkg.accent
-                      ? 'bg-[var(--color-gold-600)] hover:bg-[var(--color-gold-700)] text-white shadow-md'
-                      : 'bg-[var(--color-ivory-200)] hover:bg-[var(--color-ivory-300)] text-[var(--color-brown-800)] border border-[var(--color-ivory-400)]'
-                  }`}
-                >
-                  {t('getQuote')}
-                </a>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Estimate Calculator */}
-        <div className="bg-white rounded-2xl border border-[var(--color-ivory-300)] shadow-sm p-6 md:p-8 mb-10">
-          <h3 className="font-display text-xl md:text-2xl font-bold text-[var(--color-brown-900)] mb-2">
-            {t('estimateHeading')}
-          </h3>
-          <p className="font-body text-sm text-[var(--color-brown-500)] mb-6">
-            {t('estimateSubheading')}
-          </p>
-
-          {/* Package selector */}
-          <div className="flex gap-3 mb-6">
-            {(['basic', 'full'] as const).map((p) => (
-              <button
-                key={p}
-                id={`calc-pkg-${p}`}
-                onClick={() => setSelectedPkg(p)}
-                className={`flex-1 py-2.5 rounded-lg font-body text-sm font-semibold border transition-all ${
-                  selectedPkg === p
-                    ? 'bg-[var(--color-green-800)] text-white border-[var(--color-green-800)]'
-                    : 'bg-white text-[var(--color-brown-700)] border-[var(--color-ivory-300)] hover:border-[var(--color-brown-300)]'
-                }`}
-              >
-                {t(`${p}.name`)} ({formatINR(p === 'basic' ? 90 : 130)}/{t('perPerson')})
-              </button>
-            ))}
-          </div>
-
-          {/* Slider */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="guest-slider" className="font-body text-sm font-semibold text-[var(--color-brown-700)]">
-                {t('guestCount')}
-              </label>
-              <span className="font-display text-2xl font-bold text-[var(--color-brown-900)]">{guestCount}</span>
-            </div>
-            <input
-              id="guest-slider"
-              type="range"
-              min={100}
-              max={500}
-              step={10}
-              value={guestCount}
-              onChange={(e) => setGuestCount(Number(e.target.value))}
-              className="w-full h-2 bg-[var(--color-ivory-300)] rounded-full appearance-none cursor-pointer accent-[var(--color-green-800)]"
-            />
-            <div className="flex justify-between font-body text-xs text-[var(--color-brown-400)] mt-1">
-              <span>100</span><span>500</span>
-            </div>
-          </div>
-
-          {/* Result */}
-          <div className="flex items-center justify-between bg-[var(--color-ivory-100)] rounded-xl p-4 border border-[var(--color-ivory-300)]">
+        {/* Packages: the popular Full Meals package as a wide feature band,
+            the other two side by side beneath it. */}
+        <Reveal className="mt-14 rounded-[28px] bg-[var(--site-leaf-deep)] p-8 md:p-11">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:gap-16">
             <div>
-              <p className="font-body text-sm text-[var(--color-brown-500)]">
+              <p className="mb-5 text-[0.9rem] font-semibold text-[var(--site-brass-light)]">{t('popular')}</p>
+              <h3 className="s-h3 text-[var(--site-on-dark)]">{t('full.name')}</h3>
+              <p className="mt-2 text-[0.98rem] text-[var(--site-on-dark-soft)]">{t('full.desc')}</p>
+              <p className="mt-6 flex items-baseline gap-2">
+                <span className="s-figure text-[var(--site-brass-light)]">₹130</span>
+                <span className="text-[var(--site-on-dark-soft)]">/ {t('perPerson')}</span>
+              </p>
+              <a href="#contact" className="s-btn s-btn-brass mt-8">{t('getQuote')}</a>
+            </div>
+            <ul className="grid content-start gap-x-8 gap-y-3 sm:grid-cols-2 lg:pt-12">
+              {(t.raw('full.includes') as string[]).map((item) => (
+                <li key={item} className="flex gap-3 text-[1rem] text-[var(--site-on-dark)]">
+                  <span aria-hidden="true" className="mt-[0.55em] h-1.5 w-1.5 flex-none rotate-45 bg-[var(--site-brass-light)]" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          {PACKAGES.filter((p) => p.id !== 'full').map((p, i) => (
+            <Reveal key={p.id} delay={(i + 1) * 90} className="rounded-[28px] bg-[var(--site-paper-deep)] p-8 md:p-10">
+              {renderPackage(p.id, p.price, false)}
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Live estimate */}
+        <Reveal className="mt-5 rounded-[28px] bg-[var(--site-paper-deep)] p-8 md:p-11">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:items-center">
+            <div>
+              <h3 className="s-h3 text-[var(--site-leaf-deep)]">{t('estimateHeading')}</h3>
+              <p className="mt-2 text-[0.98rem] text-[var(--site-ink-soft)]">{t('estimateSubheading')}</p>
+
+              <div role="group" aria-label={s('packageLabel')} className="mt-6 flex flex-wrap gap-2">
+                {(['full', 'basic'] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={selectedPkg === p}
+                    onClick={() => setSelectedPkg(p)}
+                    className={`s-btn min-h-[46px] px-5 text-[0.95rem] ${selectedPkg === p ? 's-btn-primary' : 's-btn-outline'}`}
+                  >
+                    {t(`${p}.name`)} · {formatINR(p === 'basic' ? 90 : 130)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="guest-range" className="flex items-baseline justify-between gap-4">
+                <span className="font-semibold text-[var(--site-ink)]">{t('guestCount')}</span>
+                <span className="s-serif text-[2rem] font-semibold tabular-nums text-[var(--site-leaf-deep)]">{guestCount}</span>
+              </label>
+              <input
+                id="guest-range"
+                type="range"
+                min={100}
+                max={500}
+                step={10}
+                value={guestCount}
+                onChange={(e) => setGuestCount(Number(e.target.value))}
+                className="mt-3 h-3 w-full cursor-pointer accent-[var(--site-leaf)]"
+              />
+              <div className="mt-1 flex justify-between text-[0.8rem] text-[var(--site-ink-muted)]">
+                <span>100</span><span>500</span>
+              </div>
+
+              <p className="mt-7 text-[0.95rem] text-[var(--site-ink-soft)]" aria-live="polite">
                 {t('estimatedTotal', { count: guestCount })}
               </p>
-              <p className="font-body text-xs text-[var(--color-brown-400)]">{t('deliveryIfApplicable')}</p>
-            </div>
-            <div className="font-display text-3xl font-bold text-[var(--color-green-800)]">
-              {formatINR(estimatedTotal)}
+              <p className="s-figure mt-1 tabular-nums text-[var(--site-leaf-deep)]">{formatINR(estimatedTotal)}</p>
+              <p className="mt-2 text-[0.88rem] text-[var(--site-ink-muted)]">{t('deliveryIfApplicable')}</p>
             </div>
           </div>
+          <p className="mt-8 text-[0.85rem] italic text-[var(--site-ink-muted)]">{t('disclaimer')}</p>
+        </Reveal>
 
-          <p className="font-body text-xs text-[var(--color-brown-400)] mt-3 text-center">
-            {t('disclaimer')}
-          </p>
-        </div>
-
-        {/* Service Area Checker */}
-        <div className="bg-white rounded-2xl border border-[var(--color-ivory-300)] shadow-sm p-6 md:p-8">
-          <h3 className="font-display text-xl md:text-2xl font-bold text-[var(--color-brown-900)] mb-2">
-            {t('deliveryHeading')}
-          </h3>
-          <p className="font-body text-sm text-[var(--color-brown-500)] mb-6">
-            {t('deliverySubheading')}
-          </p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {SERVICE_AREAS.map((area) => (
-              <div
+        {/* Delivery charges */}
+        <Reveal className="mt-20 grid gap-10 lg:grid-cols-[0.8fr_1.2fr]">
+          <div>
+            <h3 className="s-h3 text-[var(--site-leaf-deep)]">{t('deliveryHeading')}</h3>
+            <p className="mt-3 text-[0.98rem] leading-relaxed text-[var(--site-ink-soft)]">{t('deliverySubheading')}</p>
+            <p className="mt-3 text-[0.9rem] text-[var(--site-ink-muted)]">{t('deliveryNote')}</p>
+          </div>
+          <ul className="grid gap-x-8 sm:grid-cols-2">
+            {SERVICE_AREAS.map((area, i) => (
+              <li
                 key={area.id}
-                className={`rounded-xl p-4 border text-center ${
-                  area.charge === 0
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-[var(--color-ivory-100)] border-[var(--color-ivory-300)]'
-                }`}
+                className={`flex items-baseline justify-between gap-4 rounded-xl px-4 py-3 ${i % 4 < 2 ? 'sm:bg-[var(--site-paper-deep)]' : ''} ${i % 2 === 0 ? 'max-sm:bg-[var(--site-paper-deep)]' : ''}`}
               >
-                <p className="font-body text-sm font-semibold text-[var(--color-brown-900)] mb-1">
-                  {t(`areas.${area.id}`)}
-                </p>
-                <p className="font-body text-xs text-[var(--color-brown-500)] mb-2">
-                  {t('kmAway', { dist: area.distanceKm })}
-                </p>
-                {area.charge === 0 ? (
-                  <span className="inline-block font-body text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                    {t('free')}
-                  </span>
-                ) : (
-                  <span className="inline-block font-body text-xs font-semibold text-[var(--color-brown-700)]">
-                    ~{formatINR(area.charge)}
-                  </span>
-                )}
-              </div>
+                <span>
+                  <span className="block font-semibold text-[var(--site-ink)]">{t(`areas.${area.id}`)}</span>
+                  <span className="block text-[0.82rem] text-[var(--site-ink-muted)]">{t('kmAway', { dist: area.distanceKm })}</span>
+                </span>
+                <span className={`font-semibold tabular-nums ${area.charge === 0 ? 'text-[var(--site-leaf-bright)]' : 'text-[var(--site-ink)]'}`}>
+                  {area.charge === 0 ? t('free') : formatINR(area.charge)}
+                </span>
+              </li>
             ))}
-          </div>
-          <p className="font-body text-xs text-[var(--color-brown-400)] mt-4 text-center">
-            {t('deliveryNote')}
-          </p>
-        </div>
-
+          </ul>
+        </Reveal>
       </div>
     </section>
   );

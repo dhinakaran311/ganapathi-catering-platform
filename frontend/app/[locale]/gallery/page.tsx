@@ -3,12 +3,17 @@
 // Reads from the `gallery` table (seeded via admin / SQL). If the table is
 // empty, falls back to the bundled placeholder photos in /public/images so the
 // page is never blank. Images use next/image with lazy loading.
+// (Query and fallback behaviour unchanged; layout redesigned.)
 
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import MobileNav from '@/components/layout/MobileNav';
+import Reveal from '@/components/site/Reveal';
 
 export const metadata: Metadata = {
   title: 'Gallery — Shri Ganapathi Mess',
@@ -37,12 +42,8 @@ const FALLBACK: GalleryImage[] = [
   { id: 'fb-6', title_en: 'Our Kitchen', title_ta: 'நமது சமையலறை', category: 'hotel', image_url: '/images/hotel/kitchen.jpg', alt_en: 'Clean hotel kitchen', alt_ta: 'சுத்தமான சமையலறை' },
 ];
 
-function titleFor(img: GalleryImage): string {
-  return img.title_en || img.title_ta || 'Gallery';
-}
-function altFor(img: GalleryImage): string {
-  return img.alt_en || img.alt_ta || titleFor(img);
-}
+// Varying shapes give the grid an editorial rhythm instead of identical tiles.
+const SHAPES = ['s-arch aspect-[4/5]', 'rounded-[24px] aspect-square', 'rounded-[24px] aspect-[3/4]'];
 
 export default async function GalleryPage({
   params,
@@ -50,6 +51,7 @@ export default async function GalleryPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const t = await getTranslations('Site.gallery');
 
   let images: GalleryImage[] = [];
   try {
@@ -68,61 +70,54 @@ export default async function GalleryPage({
   const useFallback = images.length === 0;
   const shown = useFallback ? FALLBACK : images;
 
+  const titleFor = (img: GalleryImage) =>
+    (locale === 'ta' ? img.title_ta || img.title_en : img.title_en || img.title_ta) || '';
+  const altFor = (img: GalleryImage) =>
+    (locale === 'ta' ? img.alt_ta || img.alt_en : img.alt_en || img.alt_ta) || titleFor(img);
+
   return (
-    <main className="min-h-screen bg-[var(--color-ivory-200)] py-12 md:py-16">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12">
+    <>
+      <Header />
+      <main className="s-section pt-12 md:pt-16">
+        <div className="s-container">
+          <Link href={`/${locale}`} className="s-link text-[0.95rem] text-[var(--site-leaf)]">
+            ← {t('back')}
+          </Link>
 
-        <Link
-          href={`/${locale}`}
-          className="inline-flex items-center gap-1.5 font-body text-sm text-[var(--color-brown-500)] hover:text-[var(--color-brown-900)] mb-6 transition-colors"
-        >
-          <ArrowLeft size={14} /> Back to Home
-        </Link>
+          <div className="mt-10 max-w-[760px]">
+            <h1 className="s-display text-[var(--site-leaf-deep)]">{t('title')}</h1>
+            <p className="s-lead mt-6">{t('lead')}</p>
+            {useFallback && (
+              <p className="mt-4 text-[0.9rem] italic text-[var(--site-ink-muted)]">{t('sample')}</p>
+            )}
+          </div>
 
-        <div className="text-center max-w-[680px] mx-auto mb-10">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-4">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]" />
-            Gallery
-            <span className="w-6 h-px bg-[var(--color-gold-700)]" />
-          </span>
-          <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-brown-900)] leading-[1.15] mb-3">
-            {locale === 'ta' ? 'எங்கள் படங்கள்' : 'Moments we served'}
-          </h1>
-          <p className="font-body text-base md:text-lg text-[var(--color-brown-600)]">
-            {locale === 'ta'
-              ? 'திருமணம், மொத்த சமையல் மற்றும் வாழை இலை விருந்து படங்கள்.'
-              : 'Weddings, bulk cooking and banana-leaf feasts from our kitchen.'}
-          </p>
+          <ul className="mt-16 columns-1 gap-6 sm:columns-2 lg:columns-3">
+            {shown.map((img, i) => (
+              <Reveal as="li" key={img.id} delay={(i % 3) * 80} className="mb-8 break-inside-avoid">
+                <figure>
+                  <div className={`relative overflow-hidden bg-[var(--site-paper-deep)] ${SHAPES[i % SHAPES.length]}`}>
+                    <Image
+                      src={img.image_url}
+                      alt={altFor(img)}
+                      fill
+                      sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 380px"
+                      className="object-cover transition-transform duration-700 hover:scale-[1.03]"
+                    />
+                  </div>
+                  {titleFor(img) && (
+                    <figcaption className="s-serif mt-3 text-[1.15rem] font-medium text-[var(--site-ink)]">
+                      {titleFor(img)}
+                    </figcaption>
+                  )}
+                </figure>
+              </Reveal>
+            ))}
+          </ul>
         </div>
-
-        {useFallback && (
-          <p className="text-center font-body text-xs text-[var(--color-brown-400)] italic mb-6">
-            Showing sample photos — real photos coming soon.
-          </p>
-        )}
-
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-          {shown.map((img) => (
-            <figure
-              key={img.id}
-              className="relative group overflow-hidden rounded-2xl border border-[var(--color-ivory-300)] bg-white aspect-[4/3]"
-            >
-              <Image
-                src={img.image_url}
-                alt={altFor(img)}
-                fill
-                sizes="(max-width: 768px) 50vw, 33vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <figcaption className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                <span className="font-body text-xs font-semibold text-white">
-                  {titleFor(img)}
-                </span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </div>
-    </main>
+      </main>
+      <Footer />
+      <MobileNav />
+    </>
   );
 }

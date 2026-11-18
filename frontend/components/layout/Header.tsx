@@ -1,69 +1,161 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+// components/layout/Header.tsx — Public site header.
+// Desktop: brand · section links · language · WhatsApp.
+// Mobile: brand · language · menu button → full-screen sheet with large links
+// and call / WhatsApp actions. Escape closes; body scroll is locked while open.
+
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import { Menu as MenuIcon, X, Phone } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
+import { WhatsAppIcon } from '@/components/site/icons';
+import { SITE } from '@/lib/site';
 
 export default function Header() {
-  const t = useTranslations('Navigation');
+  const t = useTranslations('Site.nav');
   const locale = useLocale();
-  
+  const [open, setOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  const home = `/${locale}`;
+  const links = [
+    { href: `${home}#services`, label: t('services') },
+    { href: `${home}#menu`, label: t('menu') },
+    { href: `${home}#howItWorks`, label: t('process') },
+    { href: `${home}#pricing`, label: t('pricing') },
+    { href: `${home}/gallery`, label: t('gallery') },
+    { href: `${home}#contact`, label: t('contact') },
+  ];
+
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const button = menuButtonRef.current;
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+      button?.focus();
+    };
+  }, [open]);
+
   return (
-    <header className="sticky top-0 z-50 h-[var(--spacing-nav-mobile)] md:h-[var(--spacing-nav)] bg-[var(--color-ivory-100)] border-b border-[var(--color-ivory-400)]">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12 h-full flex items-center justify-between">
-        
-        {/* Logo */}
-        <Link href={`/${locale}`} className="flex items-center gap-3 flex-shrink-0">
-          <Image
-            src="/logos/logo-512.png"
-            alt="Sri Ganapathi Mess Logo"
-            width={56}
-            height={56}
-            className="w-12 h-12 md:w-14 md:h-14 object-contain"
-          />
-          <div className="flex flex-col gap-px">
-            <span className="font-tamil text-sm font-bold text-[var(--color-green-800)] leading-tight">
+    // The sheet lives inside this sticky header (its own stacking context), so
+    // while it's open the whole header is lifted above the mobile action bar.
+    <header className={`sticky top-0 bg-[var(--site-paper)] ${open ? 'z-[1000]' : 'z-50'}`}>
+      <div className="s-container flex h-[var(--site-header)] items-center justify-between gap-6">
+        <Link href={home} aria-label={t('home')} className="flex flex-none items-center gap-3">
+          <Image src="/logos/logo-192.png" alt="" width={44} height={44} className="h-11 w-11 object-contain" priority />
+          <span className="flex flex-col leading-tight">
+            <span className="s-serif text-[1.05rem] font-semibold text-[var(--site-leaf-deep)]" lang="ta">
               ஸ்ரீ கணபதி மெஸ்
             </span>
-            <span className="font-display text-xs font-semibold text-[var(--color-gold-700)] tracking-widest uppercase leading-tight">
-              Tiruppur
+            <span className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--site-brass-text)]">
+              TIRUPPUR
             </span>
-          </div>
+          </span>
         </Link>
 
-        {/* Desktop Nav Links */}
-        <nav className="hidden md:flex items-center gap-8">
-          {['services', 'menu', 'howItWorks', 'contact'].map((key) => (
-            <Link
-              key={key}
-              href={`/${locale}/#${key.toLowerCase()}`}
-              className="text-sm font-medium text-[var(--color-brown-800)] hover:text-[var(--color-green-800)] transition-colors py-1 relative after:content-[''] after:absolute after:-bottom-0.5 after:left-0 after:right-0 after:h-0.5 after:bg-[var(--color-gold-600)] after:scale-x-0 after:transition-transform hover:after:scale-x-100 after:origin-center"
-            >
-              {t(key)}
-            </Link>
-          ))}
+        <nav aria-label={t('primary')} className="hidden lg:block">
+          <ul className="flex items-center gap-7">
+            {links.map((l) => (
+              <li key={l.href}>
+                <a
+                  href={l.href}
+                  className="text-[0.95rem] font-medium text-[var(--site-ink-soft)] transition-colors hover:text-[var(--site-leaf-deep)]"
+                >
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
         </nav>
 
-        {/* Desktop CTA & Language */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <LanguageSwitcher />
           <a
-            href="https://wa.me/919942351280"
+            href={SITE.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 h-12 rounded-md font-medium text-white bg-[#25D366] hover:bg-[#20ba5a] transition-all hover:-translate-y-px shadow-sm hover:shadow-[0_4px_16px_rgba(37,211,102,0.35)]"
+            className="s-btn s-btn-primary hidden min-h-[44px] px-5 text-[0.95rem] md:inline-flex"
           >
+            <WhatsAppIcon size={18} />
             {t('whatsapp')}
           </a>
-        </div>
-        
-        {/* Mobile Nav toggle (Hamburger) - right side */}
-        <div className="md:hidden flex items-center gap-3">
-          <LanguageSwitcher />
+          <button
+            ref={menuButtonRef}
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-expanded={open}
+            aria-controls="site-menu"
+            aria-label={t('openMenu')}
+            className="grid h-11 w-11 place-items-center rounded-full text-[var(--site-leaf-deep)] transition-colors hover:bg-[var(--site-paper-deep)] lg:hidden"
+          >
+            <MenuIcon size={24} />
+          </button>
         </div>
       </div>
+
+      {/* Mobile sheet */}
+      {open && (
+        <div
+          id="site-menu"
+          ref={sheetRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('primary')}
+          className="fixed inset-0 z-[60] flex flex-col bg-[var(--site-leaf-deep)] text-[var(--site-on-dark)] lg:hidden"
+        >
+          <div className="s-container flex h-[var(--site-header)] items-center justify-between">
+            <span className="s-serif text-lg font-semibold" lang="ta">ஸ்ரீ கணபதி மெஸ்</span>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label={t('closeMenu')}
+              className="grid h-11 w-11 place-items-center rounded-full transition-colors hover:bg-white/10"
+            >
+              <X size={26} />
+            </button>
+          </div>
+
+          <nav className="s-container flex-1 overflow-y-auto pt-6">
+            <ul className="space-y-1">
+              {links.map((l) => (
+                <li key={l.href}>
+                  <a
+                    href={l.href}
+                    onClick={() => setOpen(false)}
+                    className="s-serif block py-2.5 text-[2rem] font-semibold leading-tight transition-colors hover:text-[var(--site-brass-light)]"
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <div className="s-container grid grid-cols-2 gap-3 pb-8 pt-4">
+            <a href={SITE.phoneTel} className="s-btn s-btn-on-dark">
+              <Phone size={18} />
+              {t('call')}
+            </a>
+            <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" className="s-btn s-btn-brass">
+              <WhatsAppIcon size={18} />
+              {t('whatsapp')}
+            </a>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

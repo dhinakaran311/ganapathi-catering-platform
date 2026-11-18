@@ -2,15 +2,26 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { Playfair_Display, Noto_Sans, Noto_Sans_Tamil } from 'next/font/google';
+import { Fraunces, Noto_Serif_Tamil, Noto_Sans, Noto_Sans_Tamil } from 'next/font/google';
 import StickyQuoteButton from '@/components/shared/StickyQuoteButton';
 import "../globals.css";
+import "./site.css";
 
 const locales = ['ta', 'en'];
 
-const playfair = Playfair_Display({
+// Public-site type system (admin keeps its own fonts):
+//   display  → Fraunces (Latin) + Noto Serif Tamil (Tamil glyphs)
+//   body     → Noto Sans (Latin) + Noto Sans Tamil (Tamil glyphs)
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-display',
+  variable: '--font-serif-latin',
+  display: 'swap',
+  axes: ['SOFT', 'opsz'],
+});
+
+const notoSerifTamil = Noto_Serif_Tamil({
+  subsets: ['tamil'],
+  variable: '--font-serif-tamil',
   display: 'swap',
 });
 
@@ -86,9 +97,9 @@ export default async function RootLayout({
       lang={locale}
       dir="ltr"
       data-theme="light"
-      className={`${playfair.variable} ${notoSans.variable} ${notoSansTamil.variable}`}
+      className={`${fraunces.variable} ${notoSerifTamil.variable} ${notoSans.variable} ${notoSansTamil.variable}`}
     >
-      <body>
+      <body className="site">
         <NextIntlClientProvider messages={messages}>
           {children}
           <StickyQuoteButton />

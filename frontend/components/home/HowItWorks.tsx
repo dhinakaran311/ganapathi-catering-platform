@@ -1,82 +1,47 @@
-'use client';
+// components/home/HowItWorks.tsx — The five steps (#howItWorks).
+// An ordered path: horizontal on desktop, vertical on phones. Order is carried
+// by the <ol> and the path itself (no index numerals or emoji).
 
 import { useTranslations } from 'next-intl';
+import Reveal from '@/components/site/Reveal';
+
+const STEPS = ['step1', 'step2', 'step3', 'step4', 'step5'] as const;
 
 export default function HowItWorks() {
   const t = useTranslations('HowItWorks');
-
-  const steps = [
-    { key: 'step1', icon: '📋', number: '01' },
-    { key: 'step2', icon: '💬', number: '02' },
-    { key: 'step3', icon: '🍽️', number: '03' },
-    { key: 'step4', icon: '💰', number: '04' },
-    { key: 'step5', icon: '🎉', number: '05' },
-  ];
+  const s = useTranslations('Site.process');
 
   return (
-    <section id="howItWorks" className="py-16 md:py-24 bg-[var(--color-ivory-200)]">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12">
-
-        {/* Header */}
-        <div className="text-center max-w-[680px] mx-auto mb-12 md:mb-16">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-4">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-            {t('label')}
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-          </span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-brown-900)] leading-[1.15] whitespace-pre-line">
+    <section id="howItWorks" aria-labelledby="process-title" className="s-section s-deep">
+      <div className="s-container">
+        <Reveal className="max-w-[760px]">
+          <h2 id="process-title" className="s-h2 whitespace-pre-line text-[var(--site-leaf-deep)]">
             {t('heading')}
           </h2>
-        </div>
+          <p className="s-lead mt-5">{s('lead')}</p>
+        </Reveal>
 
-        {/* Steps Grid */}
-        <div className="grid md:grid-cols-5 gap-6 md:gap-4 relative">
-
-          {/* Connector Line (desktop only) */}
-          <div className="hidden md:block absolute top-16 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[var(--color-gold-300)] to-transparent -z-10" />
-
-          {steps.map(({ key, icon, number }, index) => (
-            <div
-              key={key}
-              className="relative bg-white rounded-2xl p-6 text-center border border-[var(--color-ivory-300)] hover:border-[var(--color-gold-400)] hover:shadow-xl transition-all group"
-            >
-              {/* Step Number */}
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-[var(--color-gold-600)] text-white font-display font-bold text-sm flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
-                {number}
-              </div>
-
-              {/* Icon */}
-              <div className="text-4xl mb-4 mt-4">{icon}</div>
-
-              {/* Content */}
-              <h3 className="font-display text-base md:text-lg font-bold text-[var(--color-brown-900)] mb-3">
-                {t(`steps.${key}.title`)}
-              </h3>
-
-              <p className="font-body text-xs md:text-sm text-[var(--color-brown-600)] leading-relaxed">
+        <ol className="relative mt-16 grid gap-10 md:mt-20 lg:grid-cols-5 lg:gap-8">
+          {/* the path */}
+          <span
+            aria-hidden="true"
+            className="absolute bottom-3 left-[7px] top-3 w-[4px] rounded-full bg-[var(--site-brass)]/35 lg:bottom-auto lg:left-0 lg:right-0 lg:top-[7px] lg:h-[4px] lg:w-auto"
+          />
+          {STEPS.map((key, i) => (
+            <Reveal as="li" key={key} delay={i * 80} className="relative pl-10 lg:pl-0 lg:pt-12">
+              <span
+                aria-hidden="true"
+                className={`absolute left-0 top-1 h-[18px] w-[18px] rounded-full lg:top-0 ${
+                  i === STEPS.length - 1 ? 'bg-[var(--site-leaf)]' : 'bg-[var(--site-brass)]'
+                }`}
+              />
+              <h3 className="s-h3 text-[var(--site-leaf-deep)]">{t(`steps.${key}.title`)}</h3>
+              <p className="mt-3 text-[0.98rem] leading-relaxed text-[var(--site-ink-soft)]">
                 {t(`steps.${key}.desc`)}
               </p>
-
-              {/* Arrow (mobile only) */}
-              {index < steps.length - 1 && (
-                <div className="md:hidden flex justify-center mt-4 text-2xl text-[var(--color-gold-600)]">↓</div>
-              )}
-            </div>
+            </Reveal>
           ))}
-        </div>
-
-        {/* CTA */}
-        <div className="text-center mt-12">
-          <a
-            href="https://wa.me/919942351280"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-8 h-14 rounded-md font-body text-base font-semibold bg-[#25D366] text-white transition-all hover:bg-[#1da851] hover:-translate-y-px shadow-md hover:shadow-lg"
-          >
-            💬 Start Your Enquiry
-          </a>
-        </div>
-
+        </ol>
       </div>
     </section>
   );

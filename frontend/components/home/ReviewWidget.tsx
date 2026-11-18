@@ -1,10 +1,12 @@
 // components/home/ReviewWidget.tsx
 // J71: Public reviews — display approved reviews and let visitors submit one.
 // Submitted reviews are stored with is_approved=false and appear only after
-// admin approval (app/admin/reviews).
+// admin approval (app/admin/reviews). Data fetching is unchanged.
 
+import { getLocale, getTranslations } from 'next-intl/server';
 import { createClient } from '@/lib/supabase/server';
 import ReviewForm from './ReviewForm';
+import Reveal from '@/components/site/Reveal';
 
 interface Review {
   id: string;
@@ -15,16 +17,19 @@ interface Review {
   review_ta: string | null;
 }
 
-function Stars({ rating }: { rating: number }) {
+function Stars({ rating, label }: { rating: number; label: string }) {
+  const r = Math.max(0, Math.min(5, Math.round(rating)));
   return (
-    <span className="text-[var(--color-gold-500)]" aria-label={`${rating} out of 5 stars`}>
-      {'★'.repeat(Math.max(0, Math.min(5, rating)))}
-      <span className="text-[var(--color-ivory-400)]">{'★'.repeat(5 - Math.max(0, Math.min(5, rating)))}</span>
+    <span role="img" aria-label={label} className="text-[1.05rem] tracking-[0.12em]">
+      <span className="text-[var(--site-brass)]">{'★'.repeat(r)}</span>
+      <span className="text-[#D9CCB2]">{'★'.repeat(5 - r)}</span>
     </span>
   );
 }
 
 export default async function ReviewWidget() {
+  const t = await getTranslations('Site.reviews');
+  const locale = await getLocale();
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -40,67 +45,48 @@ export default async function ReviewWidget() {
       ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1)
       : null;
 
+  const textFor = (r: Review) =>
+    (locale === 'ta' ? r.review_ta || r.review_en : r.review_en || r.review_ta) ?? '';
+
   return (
-    <section id="reviews" className="py-16 md:py-24 bg-[var(--color-ivory-100)]">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12">
-        {/* Header */}
-        <div className="text-center max-w-[680px] mx-auto mb-12">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-4">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]" />
-            Reviews
-            <span className="w-6 h-px bg-[var(--color-gold-700)]" />
-          </span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-brown-900)] leading-[1.15] mb-3">
-            What families say about us
-          </h2>
-          {avg && (
-            <p className="font-body text-base text-[var(--color-brown-600)]">
-              <Stars rating={Math.round(Number(avg))} /> &nbsp;
-              <strong>{avg}</strong> average from {reviews.length} review{reviews.length === 1 ? '' : 's'}
-            </p>
+    <section id="reviews" aria-labelledby="reviews-title" className="s-section s-deep">
+      <div className="s-container grid gap-14 lg:grid-cols-[1.15fr_0.85fr] lg:gap-20">
+        <div>
+          <Reveal>
+            <h2 id="reviews-title" className="s-h2 text-[var(--site-leaf-deep)]">{t('title')}</h2>
+            {avg && (
+              <p className="mt-5 flex flex-wrap items-center gap-3 text-[1rem] text-[var(--site-ink-soft)]">
+                <Stars rating={Number(avg)} label={t('stars', { n: avg })} />
+                {t('average', { avg, count: reviews.length })}
+              </p>
+            )}
+          </Reveal>
+
+          {reviews.length === 0 ? (
+            <p className="mt-10 text-[1.05rem] text-[var(--site-ink-soft)]">{t('empty')}</p>
+          ) : (
+            <ul className="mt-12 space-y-12">
+              {reviews.map((r, i) => (
+                <Reveal as="li" key={r.id} delay={Math.min(i, 3) * 70}>
+                  <figure>
+                    <blockquote className="s-serif text-[1.35rem] leading-[1.45] text-[var(--site-ink)] md:text-[1.55rem]">
+                      “{textFor(r)}”
+                    </blockquote>
+                    <figcaption className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.95rem]">
+                      <span className="font-semibold text-[var(--site-leaf-deep)]">{r.customer_name}</span>
+                      {r.event_type && <span className="text-[var(--site-ink-muted)]">{r.event_type}</span>}
+                      <Stars rating={r.rating} label={t('stars', { n: r.rating })} />
+                    </figcaption>
+                  </figure>
+                </Reveal>
+              ))}
+            </ul>
           )}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Reviews list */}
-          <div className="space-y-4">
-            {reviews.length === 0 && (
-              <div className="bg-white rounded-2xl border border-[var(--color-ivory-300)] p-8 text-center">
-                <p className="font-body text-sm text-[var(--color-brown-500)]">
-                  No reviews yet — be the first to share your experience!
-                </p>
-              </div>
-            )}
-            {reviews.map((r) => (
-              <div
-                key={r.id}
-                className="bg-white rounded-2xl border border-[var(--color-ivory-300)] p-6 shadow-sm"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-body font-semibold text-[var(--color-brown-900)]">
-                    {r.customer_name}
-                  </span>
-                  <Stars rating={r.rating} />
-                </div>
-                {(r.event_type || r.review_ta) && (
-                  <p className="font-body text-xs text-[var(--color-gold-700)] mb-1">
-                    {r.event_type}
-                  </p>
-                )}
-                {(r.review_en || r.review_ta) && (
-                  <p className="font-body text-sm text-[var(--color-brown-700)] leading-relaxed">
-                    {r.review_en || r.review_ta}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Submission form */}
-          <div>
-            <ReviewForm />
-          </div>
-        </div>
+        <Reveal delay={100} className="lg:sticky lg:top-[calc(var(--site-header)+32px)] lg:self-start">
+          <ReviewForm />
+        </Reveal>
       </div>
     </section>
   );

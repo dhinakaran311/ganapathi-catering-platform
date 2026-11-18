@@ -46,10 +46,22 @@
     "badgeTitle": "Shri Ganapathi Mess",
     "badgeSub": "Home-style Cooking · Tiruppur",
     "pillars": {
-      "fresh": { "title": "Fresh Ingredients", "desc": "Cooked fresh every day" },
-      "taste": { "title": "Home Taste", "desc": "Just like mother's cooking" },
-      "time": { "title": "On Time", "desc": "Punctual delivery guaranteed" },
-      "custom": { "title": "Custom Menu", "desc": "Tailored to your needs" }
+      "fresh": {
+        "title": "Fresh Ingredients",
+        "desc": "Cooked fresh every day"
+      },
+      "taste": {
+        "title": "Home Taste",
+        "desc": "Just like mother's cooking"
+      },
+      "time": {
+        "title": "On Time",
+        "desc": "Punctual delivery guaranteed"
+      },
+      "custom": {
+        "title": "Custom Menu",
+        "desc": "Tailored to your needs"
+      }
     }
   },
   "Menu": {
@@ -103,11 +115,26 @@
     "label": "How We Work",
     "heading": "Your order confirmed\nin 5 simple steps",
     "steps": {
-      "step1": { "title": "Fill Enquiry Form", "desc": "Tell us your event details — occasion, date, guest count, and location." },
-      "step2": { "title": "Get Quote on WhatsApp", "desc": "We contact you within 2 hours with a custom menu and pricing quote." },
-      "step3": { "title": "Customize Your Menu", "desc": "Choose from our full menu or request special dishes for your event." },
-      "step4": { "title": "Book with Advance", "desc": "Confirm your order with a small advance payment via GPay, UPI, or Cash." },
-      "step5": { "title": "Fresh Food Delivered", "desc": "Hot, fresh food delivered on time to make your event unforgettable." }
+      "step1": {
+        "title": "Fill Enquiry Form",
+        "desc": "Tell us your event details — occasion, date, guest count, and location."
+      },
+      "step2": {
+        "title": "Get Quote on WhatsApp",
+        "desc": "We contact you within 2 hours with a custom menu and pricing quote."
+      },
+      "step3": {
+        "title": "Customize Your Menu",
+        "desc": "Choose from our full menu or request special dishes for your event."
+      },
+      "step4": {
+        "title": "Book with Advance",
+        "desc": "Confirm your order with a small advance payment via GPay, UPI, or Cash."
+      },
+      "step5": {
+        "title": "Fresh Food Delivered",
+        "desc": "Hot, fresh food delivered on time to make your event unforgettable."
+      }
     }
   },
   "Pricing": {
@@ -133,17 +160,39 @@
     "basic": {
       "name": "Basic Package",
       "desc": "Simple, satisfying meals for everyday events",
-      "includes": ["Rice + Sambar", "Rasam", "Puli Kolambu", "Poriyal", "Appalam", "Curd", "Payasam"]
+      "includes": [
+        "Rice + Sambar",
+        "Rasam",
+        "Puli Kolambu",
+        "Poriyal",
+        "Appalam",
+        "Curd",
+        "Payasam"
+      ]
     },
     "full": {
       "name": "Full Meals Package",
       "desc": "Traditional full banana-leaf feast — our most popular",
-      "includes": ["Rice + Sambar + Rasam", "Fish Kolambu + Chicken Kolambu", "Puli Kolambu", "Poriyal", "Vadam + Vadai", "Appalam", "Curd + Payasam"]
+      "includes": [
+        "Rice + Sambar + Rasam",
+        "Fish Kolambu + Chicken Kolambu",
+        "Puli Kolambu",
+        "Poriyal",
+        "Vadam + Vadai",
+        "Appalam",
+        "Curd + Payasam"
+      ]
     },
     "custom": {
       "name": "Custom Menu",
       "desc": "Mix and match breakfast, lunch, dinner + non-veg items",
-      "includes": ["Any combo of tiffin items", "Country Chicken Curry / Gravy", "Chettinad Chicken Gravy", "Special event menus", "Fully customizable"]
+      "includes": [
+        "Any combo of tiffin items",
+        "Country Chicken Curry / Gravy",
+        "Chettinad Chicken Gravy",
+        "Special event menus",
+        "Fully customizable"
+      ]
     },
     "areas": {
       "velliyangadu": "Velliyangadu",
@@ -223,5 +272,189 @@
     "contact": "Contact",
     "rights": "All rights reserved.",
     "bottomTagline": "Shri Ganapathi Mess · Tiruppur · Traditional Home-Style Catering 🙏"
+  },
+  "Site": {
+    "nav": {
+      "services": "Occasions",
+      "menu": "Menu",
+      "process": "How it works",
+      "pricing": "Pricing",
+      "gallery": "Gallery",
+      "contact": "Contact",
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "quote": "Get a quote",
+      "switchTo": "தமிழ்",
+      "switchLabel": "தமிழில் பார்க்க",
+      "home": "Shri Ganapathi Mess — home",
+      "primary": "Main"
+    },
+    "hero": {
+      "title": "A mother’s kitchen,\nset for 500 guests.",
+      "echo": "பாரம்பரிய உணவு அம்மாவின் சமையலில்",
+      "factYears": "10+ years in Tiruppur",
+      "factGuests": "100 – 500 guests",
+      "factArea": "Velliyangadu, Tiruppur"
+    },
+    "tiffin": {
+      "open": "Open the tiffin",
+      "close": "Close the tiffin",
+      "caption": "The steel tiffin — how home food has always travelled in Tamil Nadu.",
+      "hint": "Drag to turn it",
+      "fallbackAlt": "A traditional South Indian banana-leaf feast",
+      "canvasLabel": "Interactive 3D steel tiffin carrier holding our menu",
+      "tierTop": "Morning tiffin",
+      "tierTopItems": "Idly · Pongal · Ghee dosa",
+      "tierMiddle": "Full meals",
+      "tierMiddleItems": "Rice · Sambar · Rasam · Poriyal",
+      "tierBottom": "Special non-veg",
+      "tierBottomItems": "Country chicken curry · Chettinad gravy"
+    },
+    "occasions": {
+      "capacity": "Minimum 100 guests · Maximum 500 guests · Free delivery within 5 km",
+      "photoAlt": "Wedding catering set-up by Shri Ganapathi Mess"
+    },
+    "story": {
+      "yearsLabel": "years cooking for Tiruppur families",
+      "largestLabel": "guests served in a single day",
+      "fromLabel": "per guest, our starting price",
+      "knownFor": "Known for country chicken curry and Chettinad gravy.",
+      "photoAlt": "The kitchen at Shri Ganapathi Mess"
+    },
+    "menu": {
+      "all": "All",
+      "breakfast": "Breakfast",
+      "lunch": "Lunch",
+      "dinner": "Dinner",
+      "snacks": "Snacks",
+      "special": "Special non-veg",
+      "filterAll": "Everything",
+      "filterVeg": "Veg only",
+      "filterNonveg": "Non-veg",
+      "categoriesLabel": "Meal",
+      "filterLabel": "Food type",
+      "veg": "Vegetarian",
+      "egg": "Contains egg",
+      "nonveg": "Non-vegetarian",
+      "signature": "Signature",
+      "empty": "No dishes match this filter.",
+      "photoTiffin": "Morning tiffin spread with idly, dosa and pongal",
+      "photoSpecial": "Country chicken curry"
+    },
+    "process": {
+      "lead": "From the first message to the last plate — everything happens on WhatsApp."
+    },
+    "pricing": {
+      "packageLabel": "Package"
+    },
+    "reviews": {
+      "title": "What families say about us",
+      "average": "{avg} out of 5, from {count} reviews",
+      "empty": "No reviews yet — be the first to share your experience.",
+      "formTitle": "Share your experience",
+      "name": "Your name",
+      "namePh": "e.g. Murugan K.",
+      "phone": "Phone (optional)",
+      "eventType": "Event type",
+      "select": "Select",
+      "rating": "Rating",
+      "stars": "{n} out of 5",
+      "review": "Your review",
+      "reviewPh": "How was the food and service?",
+      "submit": "Submit review",
+      "submitting": "Submitting…",
+      "thanks": "Thank you!",
+      "thanksBody": "Your review will appear here once it is approved.",
+      "errName": "Please enter your name.",
+      "errReview": "Please write a short review (at least 5 characters).",
+      "errPhone": "Please enter a valid 10-digit mobile number, or leave it blank.",
+      "errGeneric": "Something went wrong. Please try again.",
+      "events": {
+        "Wedding": "Wedding",
+        "Birthday": "Birthday",
+        "Corporate": "Corporate",
+        "Family Function": "Family function",
+        "Engagement": "Engagement",
+        "House Warming": "House warming",
+        "Baby Shower": "Baby shower",
+        "Other": "Other"
+      }
+    },
+    "areas": {
+      "title": "Do we deliver to you?",
+      "lead": "Type your area to see if delivery is free or what it costs.",
+      "inputLabel": "Your area",
+      "placeholder": "e.g. Avinashi, Palladam, Velliyangadu",
+      "check": "Check",
+      "deliverTo": "Yes — we deliver to {area}.",
+      "free": "Delivery is free for this area.",
+      "charge": "Delivery charge: ₹{amount}",
+      "away": "About {km} km from our kitchen.",
+      "noDelivery": "We don’t usually deliver to {area}. Call us — we may still be able to arrange it.",
+      "notFound": "We couldn’t match that area. We deliver up to 30 km from Velliyangadu, Tiruppur.",
+      "ask": "Ask us on WhatsApp",
+      "served": "Areas we serve"
+    },
+    "contact": {
+      "select": "Select",
+      "veg": "Vegetarian",
+      "nonveg": "Non-vegetarian",
+      "both": "Both",
+      "sending": "Opening WhatsApp…",
+      "successTitle": "Enquiry sent",
+      "successBody": "WhatsApp has opened on your device. Tap send and we’ll reply with a quote within 2 hours.",
+      "next": "What happens next",
+      "ok": "Got it",
+      "close": "Close"
+    },
+    "footer": {
+      "explore": "Explore",
+      "reach": "Reach us",
+      "gallery": "Gallery",
+      "admin": "Staff login",
+      "cooked": "Cooked fresh in Velliyangadu, Tiruppur."
+    },
+    "gallery": {
+      "title": "Moments we served",
+      "lead": "Weddings, bulk cooking and banana-leaf feasts from our kitchen.",
+      "sample": "Showing sample photos — real photos are coming soon.",
+      "back": "Back to home"
+    },
+    "track": {
+      "title": "{name}’s enquiry",
+      "titleFallback": "Your enquiry",
+      "code": "Tracking code",
+      "current": "Current status",
+      "cancelled": "This enquiry has been cancelled. If you think this is a mistake, please call us and we’ll be glad to help.",
+      "event": "Event",
+      "date": "Event date",
+      "updated": "Last updated {date}",
+      "help": "Questions about your quote?",
+      "whatsapp": "Message us on WhatsApp",
+      "back": "Back to home",
+      "statuses": {
+        "NEW": "Received",
+        "CONTACTED": "We called you",
+        "QUOTE_SENT": "Quote sent",
+        "CONFIRMED": "Confirmed",
+        "COMPLETED": "Completed",
+        "CANCELLED": "Cancelled",
+        "DISCUSSION": "In discussion",
+        "FOLLOW_UP": "Following up",
+        "EVENT_SCHEDULED": "Event scheduled"
+      }
+    },
+    "success": {
+      "title": "Enquiry sent",
+      "next": "What happens next",
+      "step1": "WhatsApp should have opened on your phone — just tap Send.",
+      "step2": "We reply within 2 hours with a menu and a quote for your event.",
+      "step3": "Once you confirm, a small advance books your date.",
+      "notOpened": "WhatsApp didn’t open?",
+      "openManually": "Open WhatsApp",
+      "back": "Back to home"
+    }
   }
 }

@@ -1,89 +1,60 @@
-'use client';
+// components/home/Services.tsx — Occasions we cater (#services).
+// Editorial layout: arch-cropped wedding photo beside a large typographic list
+// of the twelve occasions (replaces the old emoji card grid).
 
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import Reveal from '@/components/site/Reveal';
+
+const OCCASIONS = [
+  'wedding', 'engagement', 'earPiercing', 'babyShower', 'houseWarming', 'birthday',
+  'family', 'temple', 'corporate', 'school', 'community', 'bulk',
+] as const;
 
 export default function Services() {
   const t = useTranslations('Occasions');
-
-  const occasions = [
-    { key: 'wedding',      icon: '💍', color: 'bg-pink-50 text-pink-600' },
-    { key: 'earPiercing',  icon: '👶', color: 'bg-rose-50 text-rose-600' },
-    { key: 'engagement',   icon: '💑', color: 'bg-purple-50 text-purple-600' },
-    { key: 'houseWarming', icon: '🏡', color: 'bg-yellow-50 text-yellow-600' },
-    { key: 'babyShower',   icon: '🍼', color: 'bg-sky-50 text-sky-600' },
-    { key: 'birthday',     icon: '🎂', color: 'bg-orange-50 text-orange-600' },
-    { key: 'family',       icon: '👨‍👩‍👧‍👦', color: 'bg-amber-50 text-amber-600' },
-    { key: 'corporate',    icon: '💼', color: 'bg-blue-50 text-blue-600' },
-    { key: 'school',       icon: '🎓', color: 'bg-indigo-50 text-indigo-600' },
-    { key: 'temple',       icon: '🛕', color: 'bg-emerald-50 text-emerald-600' },
-    { key: 'community',    icon: '🏘️', color: 'bg-green-50 text-green-600' },
-    { key: 'bulk',         icon: '🍱', color: 'bg-teal-50 text-teal-600' },
-  ];
+  const s = useTranslations('Site.occasions');
 
   return (
-    <section id="services" className="py-16 md:py-24 bg-white">
-      <div className="max-w-[1200px] w-full mx-auto px-5 md:px-8 lg:px-12">
-
-        {/* Header */}
-        <div className="text-center max-w-[680px] mx-auto mb-12 md:mb-16">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-4">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-            {t('label')}
-            <span className="w-6 h-px bg-[var(--color-gold-700)]"></span>
-          </span>
-
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-[var(--color-brown-900)] leading-[1.15] whitespace-pre-line mb-3">
-            {t('heading')}
-          </h2>
-
-          <p className="font-body text-base md:text-lg text-[var(--color-brown-600)] italic">
-            {t('subheading')}
-          </p>
-        </div>
-
-        {/* Occasions Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {occasions.map(({ key, icon, color }) => (
-            <div
-              key={key}
-              className="group relative bg-[var(--color-ivory-100)] hover:bg-white border border-[var(--color-ivory-300)] hover:border-[var(--color-gold-400)] rounded-xl p-5 md:p-6 transition-all hover:shadow-lg hover:-translate-y-1 cursor-default"
-            >
-              <div className={`inline-flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full ${color} text-xl md:text-2xl mb-3 transition-transform group-hover:scale-110`}>
-                {icon}
-              </div>
-
-              <h3 className="font-display text-sm md:text-base font-semibold text-[var(--color-brown-900)] leading-snug">
-                {t(key)}
-              </h3>
-            </div>
-          ))}
-        </div>
-
-        {/* Capacity note */}
-        <div className="mt-10 text-center">
-          <div className="inline-flex flex-wrap items-center justify-center gap-6 bg-[var(--color-ivory-100)] border border-[var(--color-ivory-300)] rounded-2xl px-8 py-5">
-            <div className="flex items-center gap-3">
-              <span className="font-display text-3xl font-bold text-[var(--color-gold-600)]">100</span>
-              <span className="font-body text-sm text-[var(--color-brown-700)]">Minimum<br/>Persons</span>
-            </div>
-            <div className="w-px h-10 bg-[var(--color-ivory-400)] hidden sm:block"></div>
-            <div className="flex items-center gap-3">
-              <span className="font-display text-3xl font-bold text-[var(--color-gold-600)]">500</span>
-              <span className="font-body text-sm text-[var(--color-brown-700)]">Maximum<br/>Persons</span>
-            </div>
-            <div className="w-px h-10 bg-[var(--color-ivory-400)] hidden sm:block"></div>
-            <div className="flex items-center gap-3">
-              <span className="font-display text-3xl font-bold text-[var(--color-gold-600)]">10+</span>
-              <span className="font-body text-sm text-[var(--color-brown-700)]">Years of<br/>Experience</span>
-            </div>
-            <div className="w-px h-10 bg-[var(--color-ivory-400)] hidden sm:block"></div>
-            <div className="flex items-center gap-3">
-              <span className="font-body text-3xl">🚚</span>
-              <span className="font-body text-sm text-[var(--color-brown-700)]">Free Delivery<br/>within 5 km</span>
-            </div>
+    <section id="services" aria-labelledby="services-title" className="s-section s-deep">
+      <div className="s-container grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+        <Reveal className="lg:sticky lg:top-[calc(var(--site-header)+32px)] lg:self-start">
+          <div className="s-arch relative mx-auto aspect-[4/5] w-full max-w-[460px] lg:mx-0">
+            <Image
+              src="/images/catering-wedding.png"
+              alt={s('photoAlt')}
+              fill
+              sizes="(max-width: 1024px) 90vw, 460px"
+              className="object-cover"
+            />
           </div>
-        </div>
+        </Reveal>
 
+        <div>
+          <Reveal>
+            <h2 id="services-title" className="s-h2 whitespace-pre-line text-[var(--site-leaf-deep)]">
+              {t('heading')}
+            </h2>
+            <p className="s-lead mt-5">{t('subheading')}</p>
+          </Reveal>
+
+          <ul className="mt-12 grid gap-x-10 sm:grid-cols-2">
+            {OCCASIONS.map((key, i) => (
+              <Reveal as="li" key={key} delay={(i % 6) * 50} className="py-3.5">
+                <span className="s-serif flex items-baseline gap-3 text-[1.35rem] font-medium leading-snug text-[var(--site-ink)] md:text-[1.5rem]">
+                  <span aria-hidden="true" className="inline-block h-2 w-2 flex-none -translate-y-1 rotate-45 bg-[var(--site-brass)]" />
+                  {t(key)}
+                </span>
+              </Reveal>
+            ))}
+          </ul>
+
+          <Reveal>
+            <p className="mt-12 rounded-2xl bg-[var(--site-leaf)] px-6 py-5 text-[1rem] font-semibold leading-relaxed text-[var(--site-on-dark)] md:text-[1.05rem]">
+              {s('capacity')}
+            </p>
+          </Reveal>
+        </div>
       </div>
     </section>
   );
