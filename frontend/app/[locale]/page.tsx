@@ -12,6 +12,9 @@ import ReviewWidget from '@/components/home/ReviewWidget';
 import ServiceAreaCheckerSection from '@/components/home/ServiceAreaCheckerSection';
 import Contact from '@/components/home/Contact';
 
+// Section order tells one story: who we are (hero) → what we cater for →
+// whose cooking it is → what's on the menu → how ordering works → what it
+// costs → what families say → whether we reach you → get in touch.
 export default function Home() {
   return (
     <>

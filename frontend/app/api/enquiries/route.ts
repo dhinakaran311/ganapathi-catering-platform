@@ -22,6 +22,7 @@ import { enquirySchema } from '@/lib/validation';
 import { getClientIp, hashIdentifier, isHoneypotTripped } from '@/lib/security/request';
 import { checkRateLimits } from '@/lib/security/rate-limit';
 import { verifyTurnstile } from '@/lib/security/turnstile';
+import { normalizeIndianPhone, legacyPhoneForms } from '@/lib/phone';
 
 export async function POST(req: NextRequest) {
   try {
@@ -88,38 +89,36 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
 
     // AUTO-CREATE OR LINK CUSTOMER
-    const cleanPhone = phone.replace(/\D/g, '');
-    let customerId = null;
+    // Phone is canonicalised to its last 10 digits so "+91 98765 43210" and
+    // "9876543210" are one customer. Legacy formats saved before migration
+    // 028 are still matched. total_orders is NOT touched here any more — it
+    // counts COMPLETED orders and is maintained by a DB trigger (028).
+    const cleanPhone = normalizeIndianPhone(phone);
+    let customerId: string | null = null;
 
     if (cleanPhone) {
-      const { data: existingCustomer } = await supabase
-        .from('customers')
-        .select('id, total_orders')
-        .eq('phone', cleanPhone)
-        .single();
+      const findExisting = async () => {
+        const { data } = await supabase
+          .from('customers')
+          .select('id')
+          .in('phone', legacyPhoneForms(cleanPhone))
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        return data?.id ?? null;
+      };
 
-      if (existingCustomer) {
-        customerId = existingCustomer.id;
-        // Increment event count
-        await supabase
+      customerId = await findExisting();
+
+      if (!customerId) {
+        const { data: newCustomer, error: insertErr } = await supabase
           .from('customers')
-          .update({ total_orders: (existingCustomer.total_orders || 0) + 1 })
-          .eq('id', customerId);
-      } else {
-        // Create new customer
-        const { data: newCustomer } = await supabase
-          .from('customers')
-          .insert({
-            name,
-            phone: cleanPhone,
-            total_orders: 1
-          })
+          .insert({ name, phone: cleanPhone, total_orders: 0 })
           .select('id')
           .single();
 
-        if (newCustomer) {
-          customerId = newCustomer.id;
-        }
+        // Unique-phone race (two submissions at once): use the winner's row.
+        customerId = newCustomer?.id ?? (insertErr ? await findExisting() : null);
       }
     }
 

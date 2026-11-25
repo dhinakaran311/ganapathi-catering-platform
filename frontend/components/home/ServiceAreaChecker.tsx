@@ -5,10 +5,15 @@
 // this) and lets a visitor type their area. It fuzzy-matches against the known
 // area names (English or Tamil) and shows whether delivery is free or carries
 // a charge. Falls back to a call-to-action when there is no match.
+// (Matching logic unchanged; copy now translated, Tamil names shown in Tamil.)
 
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { track } from '@/lib/analytics/track';
+import { SITE } from '@/lib/site';
+import { WhatsAppIcon } from '@/components/site/icons';
 
 export interface ServiceArea {
   id: string;
@@ -24,116 +29,105 @@ interface ServiceAreaCheckerProps {
 }
 
 function normalize(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9\u0B80-\u0BFF]/g, '');
+  return s.toLowerCase().replace(/[^a-z0-9஀-௿]/g, '');
 }
 
 export default function ServiceAreaChecker({ areas }: ServiceAreaCheckerProps) {
+  const t = useTranslations('Site.areas');
+  const locale = useLocale();
   const [query, setQuery] = useState('');
   const [checked, setChecked] = useState(false);
 
+  const nameOf = (a: ServiceArea) => (locale === 'ta' && a.name_ta ? a.name_ta : a.name_en);
+
+  // Best match first: exact name → name starts with the query → partial
+  // match. (Previously the first partial match won, so "avinashi" matched
+  // "Avinashi Palayam" — free, 4 km — instead of Avinashi town — charged.)
   const match = useMemo(() => {
     if (!query.trim()) return null;
     const q = normalize(query);
     if (!q) return null;
+    const names = (a: ServiceArea) => [normalize(a.name_en), normalize(a.name_ta)].filter(Boolean);
     return (
-      areas.find((a) => {
-        const en = normalize(a.name_en);
-        const ta = normalize(a.name_ta);
-        return en.includes(q) || ta.includes(q) || q.includes(en);
-      }) ?? null
+      areas.find((a) => names(a).some((n) => n === q)) ??
+      areas.find((a) => names(a).some((n) => n.startsWith(q))) ??
+      areas.find((a) => names(a).some((n) => n.includes(q) || q.includes(n))) ??
+      null
     );
   }, [query, areas]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setChecked(true);
+    track({ event: 'service_area_check', metadata: { matched: Boolean(match) } });
   };
 
-  const inputClass =
-    'w-full px-4 py-3 rounded-lg border border-[var(--color-ivory-300)] bg-white font-body text-base text-[var(--color-brown-900)] placeholder:text-[var(--color-brown-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-green-800)] focus:border-transparent';
-
   return (
-    <div className="bg-[var(--color-ivory-100)] rounded-2xl p-6 md:p-8 border border-[var(--color-ivory-300)]">
-      <h3 className="font-display text-xl md:text-2xl font-bold text-[var(--color-brown-900)] mb-3">
-        Do we deliver to you?
-      </h3>
-      <p className="font-body text-sm text-[var(--color-brown-600)] mb-4">
-        Enter your area to check delivery availability and charges.
-      </p>
-
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+    <div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
+        <label htmlFor="area-query" className="sr-only">{t('inputLabel')}</label>
         <input
+          id="area-query"
           type="text"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setChecked(false); }}
-          placeholder="e.g. Avinashi, Palladam, Velliyangadu…"
-          className={inputClass}
-          aria-label="Your area"
+          placeholder={t('placeholder')}
+          className="s-field flex-1"
+          autoComplete="address-level2"
         />
-        <button
-          type="submit"
-          className="px-6 h-[46px] rounded-lg font-body text-sm font-semibold bg-[var(--color-green-800)] text-white hover:bg-[var(--color-green-900)] transition-colors whitespace-nowrap"
-        >
-          Check
+        <button type="submit" className="s-btn s-btn-primary sm:px-8">
+          {t('check')}
         </button>
       </form>
 
-      {checked && (
-        <div className="mt-4">
-          {match ? (
-            match.delivery_available ? (
-              <div className="rounded-xl bg-[var(--color-green-100)] border border-[var(--color-green-200)] p-4">
-                <p className="font-body text-sm font-semibold text-[var(--color-green-900)] mb-1">
-                  ✅ We deliver to {match.name_en}
+      <div aria-live="polite">
+        {checked && (
+          <div className="mt-5">
+            {match ? (
+              match.delivery_available ? (
+                <div className="rounded-2xl bg-[var(--site-leaf)] px-6 py-5 text-[var(--site-on-dark)]">
+                  <p className="s-serif text-[1.25rem] font-semibold">{t('deliverTo', { area: nameOf(match) })}</p>
+                  <p className="mt-1 text-[0.98rem] text-[var(--site-on-dark-soft)]">
+                    {Number(match.delivery_charge) === 0
+                      ? t('free')
+                      : t('charge', { amount: Number(match.delivery_charge).toLocaleString('en-IN') })}
+                    {match.distance_km != null && <> {t('away', { km: Number(match.distance_km) })}</>}
+                  </p>
+                </div>
+              ) : (
+                <p className="rounded-2xl bg-[var(--site-paper-deep)] px-6 py-5 text-[1rem] text-[var(--site-ink)]">
+                  {t('noDelivery', { area: nameOf(match) })}
                 </p>
-                <p className="font-body text-sm text-[var(--color-brown-700)]">
-                  {Number(match.delivery_charge) === 0
-                    ? 'Delivery is FREE for this area.'
-                    : `Delivery charge: ₹${Number(match.delivery_charge)}`}
-                  {match.distance_km != null && ` · ~${Number(match.distance_km)} km away`}
-                </p>
-              </div>
+              )
             ) : (
-              <div className="rounded-xl bg-[var(--color-ivory-200)] border border-[var(--color-ivory-400)] p-4">
-                <p className="font-body text-sm text-[var(--color-brown-700)]">
-                  We don&apos;t currently deliver to {match.name_en}. Please call us — we may be
-                  able to make an arrangement.
-                </p>
+              <div className="rounded-2xl bg-[var(--site-paper-deep)] px-6 py-5">
+                <p className="text-[1rem] text-[var(--site-ink)]">{t('notFound')}</p>
+                <a
+                  href={SITE.whatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="s-link mt-3 inline-flex items-center gap-2 text-[var(--site-leaf)]"
+                >
+                  <WhatsAppIcon size={17} />
+                  {t('ask')}
+                </a>
               </div>
-            )
-          ) : (
-            <div className="rounded-xl bg-[var(--color-ivory-200)] border border-[var(--color-ivory-400)] p-4">
-              <p className="font-body text-sm text-[var(--color-brown-700)] mb-2">
-                We couldn&apos;t find that area automatically. We deliver up to 30 km from
-                Velliyangadu, Tiruppur.
-              </p>
-              <a
-                href="https://wa.me/919942351280"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 font-body text-sm font-semibold text-[#25D366] hover:underline"
-              >
-                Ask us on WhatsApp →
-              </a>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* Known areas list */}
-      <div className="mt-5">
-        <p className="font-body text-xs font-semibold uppercase tracking-wide text-[var(--color-brown-400)] mb-2">
-          Areas we serve
-        </p>
-        <div className="flex flex-wrap gap-2">
+      <div className="mt-8">
+        <p className="text-[0.9rem] font-semibold text-[var(--site-ink-muted)]">{t('served')}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
           {areas.map((a) => (
             <button
               key={a.id}
               type="button"
-              onClick={() => { setQuery(a.name_en); setChecked(true); }}
-              className="px-3 py-1.5 rounded-full bg-white border border-[var(--color-ivory-300)] font-body text-xs text-[var(--color-brown-700)] hover:border-[var(--color-green-800)] hover:text-[var(--color-green-800)] transition-colors"
+              onClick={() => { setQuery(nameOf(a)); setChecked(true); }}
+              className="min-h-[40px] rounded-full bg-[var(--site-paper-deep)] px-4 text-[0.92rem] font-medium text-[var(--site-ink)] transition-colors hover:bg-[var(--site-leaf)] hover:text-[var(--site-on-dark)]"
             >
-              {a.name_en}
+              {nameOf(a)}
             </button>
           ))}
         </div>

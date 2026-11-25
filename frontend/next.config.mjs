@@ -41,6 +41,10 @@ const nextConfig = {
   // Don't advertise the framework in every response.
   poweredByHeader: false,
 
+  // Emit a self-contained server (.next/standalone/server.js) with only the
+  // node_modules it needs — used by the Docker image (see Dockerfile).
+  output: 'standalone',
+
   // Dev-only: extra origins allowed to load the dev server (e.g. a phone via
   // a Cloudflare tunnel). Comma-separated, set in .env.local when needed:
   //   DEV_ALLOWED_ORIGINS=my-tunnel.trycloudflare.com
@@ -48,6 +52,13 @@ const nextConfig = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+
+  // The invoice PDF route reads its fonts from disk (assets/fonts) — make
+  // sure they are shipped with that serverless function.
+  outputFileTracingIncludes: {
+    '/api/admin/invoices/*/pdf': ['./assets/fonts/**/*'],
+    '/api/invoice-pdf/*': ['./assets/fonts/**/*'],
+  },
 
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

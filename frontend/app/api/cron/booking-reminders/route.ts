@@ -15,6 +15,10 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { istDateTime, todayInIST } from '@/lib/datetime';
+
+/** Hour of day (IST) at which reminders are due. */
+const REMINDER_HOUR_IST = 9;
 
 const REMINDER_OFFSETS: { type: string; days: number }[] = [
   { type: '7_days_before', days: 7 },
@@ -34,7 +38,9 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createAdminClient();
-  const now = new Date().toISOString();
+  // event_date is a calendar date in Tiruppur — compare against today in IST
+  // (the server clock is UTC).
+  const today = todayInIST();
 
   // Confirmed/scheduled enquiries with a known, upcoming event date.
   const { data: events, error: fetchErr } = await supabase
@@ -42,7 +48,7 @@ export async function POST(req: NextRequest) {
     .select('id, event_date, status')
     .in('status', ['CONFIRMED', 'EVENT_SCHEDULED'])
     .not('event_date', 'is', null)
-    .gte('event_date', now);
+    .gte('event_date', today);
 
   if (fetchErr) {
     return NextResponse.json({ error: fetchErr.message }, { status: 500 });
@@ -63,13 +69,13 @@ export async function POST(req: NextRequest) {
 
     const existingTypes = new Set((existing ?? []).map((r) => r.reminder_type));
 
-    const eventTs = new Date(ev.event_date + 'T00:00:00').getTime();
-
+    // Reminders fall at 9:00 AM IST N days before the event (previously the
+    // date was parsed as UTC midnight = 5:30 AM IST).
     const rows = REMINDER_OFFSETS.filter((o) => !existingTypes.has(o.type))
       .map((o) => ({
         enquiry_id:     ev.id,
         reminder_type:  o.type,
-        scheduled_for:  new Date(eventTs - o.days * 86_400_000).toISOString(),
+        scheduled_for:  istDateTime(ev.event_date, REMINDER_HOUR_IST, 0, -o.days).toISOString(),
         status:         'pending',
         delivery_method: 'whatsapp',
       }));

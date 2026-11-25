@@ -6,21 +6,27 @@
 // PRIVACY: the query runs through the server-only service-role client, but the
 // page returns a deliberately trimmed projection — status, event summary, and
 // the last update time. It never exposes phone, address, message, internal
-// notes, or the customer record.
+// notes, or the customer record. (Query unchanged; page redesigned + translated.)
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ENQUIRY_STATUS_LABELS, ENQUIRY_STATUS_DOT_COLORS, type EnquiryStatus } from '@/types/enquiry';
+import type { EnquiryStatus } from '@/types/enquiry';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import MobileNav from '@/components/layout/MobileNav';
+import { WhatsAppIcon } from '@/components/site/icons';
+import { SITE } from '@/lib/site';
 
 // Statuses shown to the customer in order (CANCELLED handled separately).
 const PUBLIC_FLOW: EnquiryStatus[] = [
   'NEW', 'CONTACTED', 'QUOTE_SENT', 'CONFIRMED', 'COMPLETED',
 ];
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, locale: string): string {
   if (!value) return '';
-  return new Date(value).toLocaleDateString('en-IN', {
+  return new Date(value).toLocaleDateString(locale === 'ta' ? 'ta-IN' : 'en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
 }
@@ -30,7 +36,7 @@ export default async function TrackPage({
 }: {
   params: Promise<{ locale: string; code: string }>;
 }) {
-  const { code } = await params;
+  const { locale, code } = await params;
   const trackingCode = code.trim().toUpperCase();
 
   // Basic shape guard before hitting the DB.
@@ -49,131 +55,87 @@ export default async function TrackPage({
     notFound();
   }
 
+  const t = await getTranslations('Site.track');
   const status = enquiry.status as EnquiryStatus;
   const isCancelled = status === 'CANCELLED';
-  const currentIndex = PUBLIC_FLOW.indexOf(status);
+  // Internal-only stages map onto the nearest public step.
+  const PUBLIC_EQUIV: Partial<Record<EnquiryStatus, EnquiryStatus>> = {
+    DISCUSSION: 'CONTACTED', FOLLOW_UP: 'QUOTE_SENT', EVENT_SCHEDULED: 'CONFIRMED',
+  };
+  const currentIndex = PUBLIC_FLOW.indexOf(PUBLIC_EQUIV[status] ?? status);
+  const firstName = enquiry.name ? enquiry.name.split(' ')[0] : '';
 
   return (
-    <main className="min-h-screen bg-[var(--color-ivory-200)] px-5 py-16">
-      <div className="w-full max-w-lg mx-auto">
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <span className="inline-flex items-center gap-2 font-body text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-gold-700)] mb-3">
-            <span className="w-6 h-px bg-[var(--color-gold-700)]" />
-            Track Your Enquiry
-            <span className="w-6 h-px bg-[var(--color-gold-700)]" />
-          </span>
-          <h1 className="font-display text-3xl md:text-4xl font-bold text-[var(--color-brown-900)] mb-2">
-            {enquiry.name ? `${enquiry.name.split(' ')[0]}'s Enquiry` : 'Your Enquiry'}
+    <>
+      <Header />
+      <main className="s-section pt-14 md:pt-20">
+        <div className="s-container max-w-[820px]">
+          <h1 className="s-h2 text-[var(--site-leaf-deep)]">
+            {firstName ? t('title', { name: firstName }) : t('titleFallback')}
           </h1>
-          <p className="font-body text-sm text-[var(--color-brown-500)]">
-            Code <span className="font-mono font-bold text-[var(--color-green-800)]">{enquiry.tracking_code}</span>
+          <p className="mt-3 text-[1rem] text-[var(--site-ink-soft)]">
+            {t('code')} <span className="font-semibold tracking-[0.08em] text-[var(--site-leaf)]">{enquiry.tracking_code}</span>
           </p>
-        </div>
 
-        <div className="bg-white rounded-2xl border border-[var(--color-ivory-300)] shadow-sm p-6 md:p-8">
+          <div className="mt-10 rounded-[28px] bg-[var(--site-paper-deep)] p-7 md:p-10">
+            <p className="text-[0.9rem] font-semibold text-[var(--site-ink-muted)]">{t('current')}</p>
+            <p className="s-h3 mt-1 text-[var(--site-leaf-deep)]">{t(`statuses.${status}`)}</p>
 
-          {/* Current status badge */}
-          <div className="flex items-center gap-3 mb-6 pb-6 border-b border-[var(--color-ivory-300)]">
-            <span className={`inline-block w-3 h-3 rounded-full ${ENQUIRY_STATUS_DOT_COLORS[status]}`} />
-            <div>
-              <p className="font-body text-xs text-[var(--color-brown-500)]">Current status</p>
-              <p className="font-display text-xl font-bold text-[var(--color-brown-900)]">
-                {ENQUIRY_STATUS_LABELS[status]}
-              </p>
-            </div>
+            {isCancelled ? (
+              <p className="mt-6 rounded-2xl bg-[#F6DDD3] px-5 py-4 text-[1rem] text-[var(--site-chilli)]">{t('cancelled')}</p>
+            ) : (
+              <ol className="mt-8 space-y-4">
+                {PUBLIC_FLOW.map((s, i) => {
+                  const done = i <= currentIndex;
+                  return (
+                    <li key={s} className="flex items-center gap-4">
+                      <span
+                        aria-hidden="true"
+                        className={`h-4 w-4 flex-none rounded-full ${done ? 'bg-[var(--site-leaf)]' : 'bg-[#DCCFB6]'}`}
+                      />
+                      <span className={`text-[1.05rem] ${done ? 'font-semibold text-[var(--site-ink)]' : 'text-[var(--site-ink-muted)]'}`}>
+                        {t(`statuses.${s}`)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+
+            {(enquiry.event_type || enquiry.event_date) && (
+              <dl className="mt-8 grid gap-4 sm:grid-cols-2">
+                {enquiry.event_type && (
+                  <div>
+                    <dt className="text-[0.88rem] text-[var(--site-ink-muted)]">{t('event')}</dt>
+                    <dd className="font-semibold text-[var(--site-ink)]">{enquiry.event_type}</dd>
+                  </div>
+                )}
+                {enquiry.event_date && (
+                  <div>
+                    <dt className="text-[0.88rem] text-[var(--site-ink-muted)]">{t('date')}</dt>
+                    <dd className="font-semibold text-[var(--site-ink)]">{formatDate(enquiry.event_date, locale)}</dd>
+                  </div>
+                )}
+              </dl>
+            )}
+
+            <p className="mt-8 text-[0.88rem] text-[var(--site-ink-muted)]">
+              {t('updated', { date: formatDate(enquiry.updated_at, locale) })}
+            </p>
           </div>
 
-          {/* Progress flow (hidden for cancelled) */}
-          {!isCancelled && (
-            <ol className="space-y-0 mb-6">
-              {PUBLIC_FLOW.map((s, i) => {
-                const done = i <= currentIndex;
-                return (
-                  <li key={s} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
-                          done
-                            ? 'bg-[var(--color-green-800)] text-white'
-                            : 'bg-[var(--color-ivory-300)] text-[var(--color-brown-400)]'
-                        }`}
-                      >
-                        {done ? '✓' : i + 1}
-                      </div>
-                      {i < PUBLIC_FLOW.length - 1 && (
-                        <div className={`w-px flex-1 min-h-[20px] ${i < currentIndex ? 'bg-[var(--color-green-800)]' : 'bg-[var(--color-ivory-300)]'}`} />
-                      )}
-                    </div>
-                    <div className="pb-4">
-                      <p className={`font-body text-sm font-semibold ${done ? 'text-[var(--color-brown-900)]' : 'text-[var(--color-brown-400)]'}`}>
-                        {ENQUIRY_STATUS_LABELS[s]}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-
-          {/* Cancelled notice */}
-          {isCancelled && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-4 mb-6">
-              <p className="font-body text-sm text-red-700">
-                This enquiry has been cancelled. If you think this is a mistake, please
-                call us and we&apos;ll be happy to help.
-              </p>
-            </div>
-          )}
-
-          {/* Event summary */}
-          {(enquiry.event_type || enquiry.event_date) && (
-            <div className="rounded-xl bg-[var(--color-ivory-100)] border border-[var(--color-ivory-300)] p-4 space-y-2">
-              {enquiry.event_type && (
-                <div className="flex justify-between text-sm">
-                  <span className="font-body text-[var(--color-brown-500)]">Event</span>
-                  <span className="font-body font-semibold text-[var(--color-brown-900)]">{enquiry.event_type}</span>
-                </div>
-              )}
-              {enquiry.event_date && (
-                <div className="flex justify-between text-sm">
-                  <span className="font-body text-[var(--color-brown-500)]">Event date</span>
-                  <span className="font-body font-semibold text-[var(--color-brown-900)]">{formatDate(enquiry.event_date)}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          <p className="font-body text-xs text-[var(--color-brown-400)] mt-4">
-            Last updated {formatDate(enquiry.updated_at)}
-          </p>
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <p className="font-semibold text-[var(--site-ink)] sm:mr-3">{t('help')}</p>
+            <a href={SITE.whatsappUrl} target="_blank" rel="noopener noreferrer" className="s-btn s-btn-primary s-wa">
+              <WhatsAppIcon size={19} />
+              {t('whatsapp')}
+            </a>
+            <Link href={`/${locale}`} className="s-btn s-btn-outline">{t('back')}</Link>
+          </div>
         </div>
-
-        {/* Help */}
-        <div className="bg-[var(--color-ivory-100)] rounded-xl border border-[var(--color-ivory-300)] p-4 mt-6 text-center">
-          <p className="font-body text-xs text-[var(--color-brown-500)] mb-2">
-            Questions about your quote?
-          </p>
-          <a
-            href="https://wa.me/919942351280"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 font-body text-sm font-semibold text-[#25D366] hover:underline"
-          >
-            Message us on WhatsApp →
-          </a>
-        </div>
-
-        <div className="text-center mt-6">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center px-8 h-12 rounded-md font-body text-sm font-semibold bg-[var(--color-green-800)] text-white hover:bg-[var(--color-green-900)] transition-colors"
-          >
-            Back to Home
-          </Link>
-        </div>
-      </div>
-    </main>
+      </main>
+      <Footer />
+      <MobileNav />
+    </>
   );
 }

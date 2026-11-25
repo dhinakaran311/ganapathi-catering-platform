@@ -1,24 +1,26 @@
 'use client';
 
+// components/shared/StickyQuoteButton.tsx — A10: floating "Get a quote".
+// Desktop/tablet only (phones have the bottom action bar). Appears after the
+// visitor scrolls past the hero; opens WhatsApp with the enquiry template.
+
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { buildWhatsAppUrl, generateWhatsAppMessage } from '@/lib/whatsapp';
+import { WhatsAppIcon } from '@/components/site/icons';
 
 export default function StickyQuoteButton() {
+  const t = useTranslations('Site.nav');
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const toggleVisibility = () => {
-      setIsVisible(window.pageYOffset > 400);
-    };
-    window.addEventListener('scroll', toggleVisibility, { passive: true });
-    return () => window.removeEventListener('scroll', toggleVisibility);
+    const onScroll = () => setIsVisible(window.scrollY > 640);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const whatsappUrl = buildWhatsAppUrl(
-    generateWhatsAppMessage({ name: '', phone: '' })
-  );
-
-  if (!isVisible) return null;
+  const whatsappUrl = buildWhatsAppUrl(generateWhatsAppMessage({ name: '', phone: '' }));
 
   return (
     <a
@@ -26,15 +28,14 @@ export default function StickyQuoteButton() {
       target="_blank"
       rel="noopener noreferrer"
       id="sticky-quote-btn"
-      aria-label="Get a Quote via WhatsApp"
-      className="fixed bottom-20 right-4 z-40 md:bottom-8 md:right-6 flex items-center gap-2 px-5 py-3 rounded-full font-body font-semibold text-sm bg-[var(--color-gold-600)] text-white shadow-lg hover:bg-[var(--color-gold-700)] hover:-translate-y-1 transition-all duration-300"
-      style={{
-        animation: 'fadeInUp 0.4s ease',
-        boxShadow: '0 4px 20px rgba(184,134,11,0.4)',
-      }}
+      aria-hidden={!isVisible}
+      tabIndex={isVisible ? 0 : -1}
+      className={`s-btn s-btn-brass fixed bottom-8 right-8 z-40 hidden md:inline-flex transition-[opacity,transform] duration-300 ${
+        isVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0'
+      }`}
     >
-      <span>📋</span>
-      <span>Get Quote</span>
+      <WhatsAppIcon size={18} />
+      {t('quote')}
     </a>
   );
 }

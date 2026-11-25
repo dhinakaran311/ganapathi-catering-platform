@@ -2,15 +2,29 @@ import type { Metadata } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { Playfair_Display, Noto_Sans, Noto_Sans_Tamil } from 'next/font/google';
+import { Fraunces, Noto_Serif_Tamil, Noto_Sans, Noto_Sans_Tamil } from 'next/font/google';
 import StickyQuoteButton from '@/components/shared/StickyQuoteButton';
+import { SiteBrandProvider } from '@/components/site/SiteBrand';
+import { getSiteTheme } from '@/lib/theme-settings.server';
+import { SITE } from '@/lib/site';
 import "../globals.css";
+import "./site.css";
 
 const locales = ['ta', 'en'];
 
-const playfair = Playfair_Display({
+// Public-site type system (admin keeps its own fonts):
+//   display  → Fraunces (Latin) + Noto Serif Tamil (Tamil glyphs)
+//   body     → Noto Sans (Latin) + Noto Sans Tamil (Tamil glyphs)
+const fraunces = Fraunces({
   subsets: ['latin'],
-  variable: '--font-display',
+  variable: '--font-serif-latin',
+  display: 'swap',
+  axes: ['SOFT', 'opsz'],
+});
+
+const notoSerifTamil = Noto_Serif_Tamil({
+  subsets: ['tamil'],
+  variable: '--font-serif-tamil',
   display: 'swap',
 });
 
@@ -26,9 +40,13 @@ const notoSansTamil = Noto_Sans_Tamil({
   display: 'swap',
 });
 
+// Facts come from lib/site.ts so the description and Open Graph text can't
+// disagree (OG previously said 15 km while everything else said 5 km).
+const GUESTS = `${SITE.minGuests}-${SITE.maxGuests}`;
+
 export const metadata: Metadata = {
-  title: "Shri Ganapathi Mess - Best Catering in Tiruppur | 100-500 Persons",
-  description: "Traditional home-style catering in Tiruppur for weddings, corporate events & family functions. Free delivery within 5km. 10+ years experience. Serving 100-500 guests. Call: 9942351280.",
+  title: `${SITE.nameEn} - Best Catering in ${SITE.city} | ${GUESTS} Persons`,
+  description: `Traditional home-style catering in ${SITE.city} for weddings, corporate events & family functions. Free delivery within ${SITE.freeDeliveryKm} km. ${SITE.yearsExperience} years experience. Serving ${GUESTS} guests. Call: ${SITE.phoneLocal}.`,
   keywords: [
     "Tiruppur catering",
     "bulk food order Tiruppur",
@@ -41,14 +59,14 @@ export const metadata: Metadata = {
     "function catering Tiruppur",
     "home style catering Tamil Nadu",
   ],
-  authors: [{ name: "Shri Ganapathi Mess" }],
+  authors: [{ name: SITE.nameEn }],
   openGraph: {
-    title: "Shri Ganapathi Mess - Traditional Home-Style Catering, Tiruppur",
-    description: "Traditional home-style catering for weddings, family functions, corporate events. 100-500 guests. Free delivery within 15km. 10+ years. Call 9942351280.",
+    title: `${SITE.nameEn} - Traditional Home-Style Catering, ${SITE.city}`,
+    description: `Traditional home-style catering for weddings, family functions, corporate events. ${GUESTS} guests. Free delivery within ${SITE.freeDeliveryKm} km. ${SITE.yearsExperience} years. Call ${SITE.phoneLocal}.`,
     type: "website",
     locale: "ta_IN",
     alternateLocale: "en_IN",
-    siteName: "Shri Ganapathi Mess",
+    siteName: SITE.nameEn,
   },
   robots: {
     index: true,
@@ -76,6 +94,8 @@ export default async function RootLayout({
   }
 
   const messages = await getMessages();
+  // Admin → Settings → Theme (only customised values; defaults = as designed).
+  const theme = await getSiteTheme();
 
   return (
     // The public site is always rendered in the light palette. Its components
@@ -86,12 +106,14 @@ export default async function RootLayout({
       lang={locale}
       dir="ltr"
       data-theme="light"
-      className={`${playfair.variable} ${notoSans.variable} ${notoSansTamil.variable}`}
+      className={`${fraunces.variable} ${notoSerifTamil.variable} ${notoSans.variable} ${notoSansTamil.variable}`}
     >
-      <body>
+      <body className="site" style={theme.style}>
         <NextIntlClientProvider messages={messages}>
-          {children}
-          <StickyQuoteButton />
+          <SiteBrandProvider logoUrl={theme.logoUrl}>
+            {children}
+            <StickyQuoteButton />
+          </SiteBrandProvider>
         </NextIntlClientProvider>
       </body>
     </html>
