@@ -1,0 +1,46 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Dashboard → New → Blueprint → pick this repo. Render will prompt for every
+# `sync: false` value on first creation.
+services:
+  - type: web
+    name: ganapathi-catering
+    runtime: docker
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore        # closest to Tamil Nadu; cannot be changed later
+    plan: free               # free sleeps after ~15 min idle; use starter for always-on
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      # ── Public (baked into the browser bundle at build time) ──
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL          # e.g. https://ganapathi-catering.onrender.com
+        sync: false
+      - key: NEXT_PUBLIC_HOTEL_PHONE
+        sync: false
+      - key: NEXT_PUBLIC_HOTEL_WHATSAPP
+        sync: false
+      - key: NEXT_PUBLIC_HOTEL_NAME_EN
+        sync: false
+      - key: NEXT_PUBLIC_HOTEL_NAME_TA
+        sync: false
+      - key: NEXT_PUBLIC_GOOGLE_MAPS_EMBED
+        sync: false
+      - key: NEXT_PUBLIC_TURNSTILE_SITE_KEY   # optional
+        sync: false
+      # ── Server-only secrets ──
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY             # optional
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_SALT
+        generateValue: true
+      - key: INVOICE_LINK_SECRET
+        generateValue: true

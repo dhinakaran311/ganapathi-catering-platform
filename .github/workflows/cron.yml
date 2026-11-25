@@ -1,0 +1,35 @@
+# Scheduled jobs (replaces the Vercel crons in frontend/vercel.json when the
+# app runs on Render). Calls the app's /api/cron/* routes with the shared
+# CRON_SECRET. Times are UTC: 02:00 UTC = 07:30 IST, 06:00 UTC = 11:30 IST.
+#
+# Repo → Settings → Secrets and variables → Actions → add:
+#   APP_URL      https://<your-service>.onrender.com   (no trailing slash)
+#   CRON_SECRET  same value as the CRON_SECRET env var on Render
+name: Cron jobs
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # auto-update-statuses
+    - cron: '0 6 * * *'   # booking-reminders
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to run now
+        type: choice
+        options: [auto-update-statuses, booking-reminders]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cron endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          JOB: ${{ github.event.inputs.job || (github.event.schedule == '0 2 * * *' && 'auto-update-statuses' || 'booking-reminders') }}
+        run: |
+          # Wake the service first (Render free plan sleeps when idle).
+          curl -sS -o /dev/null --max-time 120 --retry 3 --retry-all-errors "$APP_URL/api/health" || true
+          curl -fsS -X POST --max-time 120 --retry 2 --retry-all-errors \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/$JOB"
