@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { requireMinRole } from '@/lib/auth/roles';
 import { createInvoiceToken, LINK_TTL_DAYS } from '@/lib/invoice/share-link.server';
+import { getPublicOrigin } from '@/lib/security/request';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireMinRole('STAFF');
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   // Public origin of the site (set NEXT_PUBLIC_SITE_URL in production if the
   // admin is ever opened through a different host).
-  const origin = (process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin).replace(/\/$/, '');
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL || getPublicOrigin(req)).replace(/\/$/, '');
   const url = `${origin}/api/invoice-pdf/${createInvoiceToken(invoice.id)}`;
 
   return NextResponse.json({ url, expiresInDays: LINK_TTL_DAYS });

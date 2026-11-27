@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getPublicOrigin } from '@/lib/security/request';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,8 +51,11 @@ export async function GET(req: NextRequest) {
     problems.push('NEXT_PUBLIC_SITE_URL missing: invoice / tracking links fall back to the request address.');
   } else {
     try {
-      if (new URL(env.NEXT_PUBLIC_SITE_URL).host !== req.nextUrl.host) {
-        problems.push(`NEXT_PUBLIC_SITE_URL is ${env.NEXT_PUBLIC_SITE_URL} but this site is ${req.nextUrl.origin}: links sent to customers will point to the wrong address. Fix it and redeploy.`);
+      // Compare with the PUBLIC address (behind Render's proxy req.nextUrl is
+      // the internal 0.0.0.0:10000).
+      const publicOrigin = getPublicOrigin(req);
+      if (new URL(env.NEXT_PUBLIC_SITE_URL).host !== new URL(publicOrigin).host) {
+        problems.push(`NEXT_PUBLIC_SITE_URL is ${env.NEXT_PUBLIC_SITE_URL} but this site is ${publicOrigin}: links sent to customers will point to the wrong address. Fix it and redeploy.`);
       }
     } catch {
       problems.push('NEXT_PUBLIC_SITE_URL is not a valid URL.');

@@ -13,6 +13,23 @@ export function getClientIp(req: NextRequest): string {
   return req.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
+/**
+ * The site's PUBLIC origin as the browser sees it (e.g.
+ * https://ganapathi-catering-platform.onrender.com).
+ *
+ * Behind Render's proxy the standalone server listens on 0.0.0.0:10000, so
+ * req.url / req.nextUrl.origin are that internal address. The proxy passes
+ * the real host in x-forwarded-host / host and the scheme in
+ * x-forwarded-proto. Falls back to req.nextUrl.origin (local dev).
+ */
+export function getPublicOrigin(req: NextRequest): string {
+  const host = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').split(',')[0].trim();
+  if (!host || host.startsWith('0.0.0.0')) return req.nextUrl.origin;
+  const proto = (req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '') || 'https')
+    .split(',')[0].trim();
+  return `${proto}://${host}`;
+}
+
 /** One-way hash so rate-limit rows never contain personal data. */
 export function hashIdentifier(value: string): string {
   const salt = process.env.RATE_LIMIT_SALT || 'sgm-rate-limit';
