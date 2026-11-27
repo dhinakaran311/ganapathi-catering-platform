@@ -32,12 +32,12 @@ checks (n, migration, check_name, actual, expected, ok, how_to_fix) AS (
          to_regclass('public.staff_profiles') IS NOT NULL,
          'Run 019_staff_profiles_rbac.sql, then 024_harden_is_admin.sql'
   UNION ALL
-  SELECT 2, '019/024', 'is_admin() checks staff_profiles (safe version)',
-         coalesce((SELECT bool_or(pg_get_functiondef(p.oid) ILIKE '%staff_profiles%')
+  SELECT 2, '019/024', 'is_admin() is role-based (019/024 version, not "any logged-in user")',
+         coalesce((SELECT bool_or(pg_get_functiondef(p.oid) ILIKE '%staff_profiles%' OR pg_get_functiondef(p.oid) ILIKE '%has_any_role%')
                    FROM pg_proc p
                    WHERE p.proname = 'is_admin' AND p.pronamespace = 'public'::regnamespace), false)::text,
          'true',
-         coalesce((SELECT bool_or(pg_get_functiondef(p.oid) ILIKE '%staff_profiles%')
+         coalesce((SELECT bool_or(pg_get_functiondef(p.oid) ILIKE '%staff_profiles%' OR pg_get_functiondef(p.oid) ILIKE '%has_any_role%')
                    FROM pg_proc p
                    WHERE p.proname = 'is_admin' AND p.pronamespace = 'public'::regnamespace), false),
          'Run 024_harden_is_admin.sql'
