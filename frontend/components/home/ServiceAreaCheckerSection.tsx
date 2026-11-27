@@ -4,7 +4,7 @@
 // the interactive checker ships to the browser. (Query unchanged.)
 
 import { getTranslations } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import ServiceAreaChecker, { type ServiceArea } from './ServiceAreaChecker';
 import Reveal from '@/components/site/Reveal';
 
@@ -12,7 +12,7 @@ export default async function ServiceAreaCheckerSection() {
   let areas: ServiceArea[] = [];
 
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data } = await supabase
       .from('service_areas')
       .select('id, name_en, name_ta, delivery_available, delivery_charge, distance_km')

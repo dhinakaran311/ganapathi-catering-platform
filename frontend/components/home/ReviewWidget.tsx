@@ -4,7 +4,7 @@
 // admin approval (app/admin/reviews). Data fetching is unchanged.
 
 import { getLocale, getTranslations } from 'next-intl/server';
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import ReviewForm from './ReviewForm';
 import Reveal from '@/components/site/Reveal';
 
@@ -30,7 +30,7 @@ function Stars({ rating, label }: { rating: number; label: string }) {
 export default async function ReviewWidget() {
   const t = await getTranslations('Site.reviews');
   const locale = await getLocale();
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data } = await supabase
     .from('reviews')
