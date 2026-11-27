@@ -9,7 +9,7 @@
 // notes, or the customer record. (Query unchanged; page redesigned + translated.)
 
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { EnquiryStatus } from '@/types/enquiry';
@@ -39,9 +39,14 @@ export default async function TrackPage({
   const { locale, code } = await params;
   const trackingCode = code.trim().toUpperCase();
 
+  // Wrong or unknown code → back to the lookup page (/track) with a friendly
+  // message and the code filled in, instead of a bare 404.
+  const backToLookup = (): never =>
+    redirect(`/${locale}/track?code=${encodeURIComponent(trackingCode.replace(/[^A-Z0-9]/g, '').slice(0, 12))}&error=notfound`);
+
   // Basic shape guard before hitting the DB.
   if (!/^[A-Z0-9]{6,12}$/.test(trackingCode)) {
-    notFound();
+    backToLookup();
   }
 
   const supabase = createAdminClient();
@@ -52,7 +57,7 @@ export default async function TrackPage({
     .maybeSingle();
 
   if (error || !enquiry) {
-    notFound();
+    return backToLookup();
   }
 
   const t = await getTranslations('Site.track');

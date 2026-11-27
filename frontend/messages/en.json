@@ -289,7 +289,8 @@
       "switchTo": "தமிழ்",
       "switchLabel": "தமிழில் பார்க்க",
       "home": "Shri Ganapathi Mess — home",
-      "primary": "Main"
+      "primary": "Main",
+      "track": "Track enquiry"
     },
     "hero": {
       "title": "A mother’s kitchen,\nset for 500 guests.",
@@ -424,7 +425,10 @@
       "trackingHint": "Save this code — use it any time to check the status of your enquiry.",
       "trackLink": "Track your enquiry",
       "copy": "Copy",
-      "copied": "Copied"
+      "copied": "Copied",
+      "trackExisting": "Already sent an enquiry?",
+      "trackExistingLink": "Check its status",
+      "openWhatsApp": "Open WhatsApp to send"
     },
     "footer": {
       "explore": "Explore",
@@ -478,6 +482,20 @@
       "body": "The link may be old or mistyped. Everything you need — menu, pricing and enquiries — is on our home page.",
       "home": "Go to home page",
       "whatsapp": "Ask us on WhatsApp"
+    },
+    "trackLookup": {
+      "eyebrow": "Enquiry status",
+      "title": "Track your enquiry",
+      "intro": "Enter the 8-character tracking code you got after sending your enquiry to see where it stands.",
+      "label": "Tracking code",
+      "placeholder": "e.g. B93E3D7A",
+      "submit": "Check status",
+      "saved": "We filled in the code from your last enquiry on this device.",
+      "invalid": "Tracking codes are 6–12 letters and numbers. Please check and try again.",
+      "notFound": "We couldn’t find an enquiry with code {code}. Check the code, or message us on WhatsApp and we’ll look it up for you.",
+      "noCode": "Lost your code?",
+      "whatsapp": "Ask us on WhatsApp",
+      "newEnquiry": "Send a new enquiry"
     }
   }
 }

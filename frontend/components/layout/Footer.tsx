@@ -19,6 +19,7 @@ export default function Footer() {
     { href: `${home}#pricing`, label: nav('pricing') },
     { href: `${home}/gallery`, label: nav('gallery') },
     { href: `${home}#contact`, label: nav('contact') },
+    { href: `${home}/track`, label: nav('track') },
   ];
 
   return (

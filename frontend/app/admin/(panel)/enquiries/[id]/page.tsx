@@ -12,7 +12,8 @@ import ActivityTimeline from '@/components/admin/ActivityTimeline';
 import BusinessPipeline from '@/components/admin/BusinessPipeline';
 import NextActionPanel from '@/components/admin/NextActionPanel';
 import CompleteOrderButton from '@/components/admin/CompleteOrderButton';
-import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { buildWhatsAppUrl, buildTrackingUrl, toWaNumber } from '@/lib/whatsapp';
+import { headers } from 'next/headers';
 import type { EnquiryStatus } from '@/types/enquiry';
 import { SOURCE_LABELS, ROLE_BADGE_COLORS, type EnquirySource } from '@/types/staff';
 
@@ -82,10 +83,26 @@ export default async function EnquiryDetailPage({
   const assignedToProfile = staffList.find((s) => s.user_id === enq.assigned_to);
   const assignedToName = assignedToProfile?.full_name ?? assignedToProfile?.email ?? null;
 
-  // Build WhatsApp URL
-  const waUrl = buildWhatsAppUrl(
-    `Hi ${enq.name}! Regarding your enquiry for ${enq.event_type || 'your event'} on ${enq.event_date || 'the requested date'} — `
-  );
+  // WhatsApp the CUSTOMER (their own chat — not the business number), with
+  // their tracking code and status link so they can follow the enquiry.
+  const customerWa = toWaNumber(enq.whatsapp || enq.phone);
+  let waUrl: string | null = null;
+  if (customerWa) {
+    const h = await headers();
+    const origin = process.env.NEXT_PUBLIC_SITE_URL
+      || `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('x-forwarded-host') ?? h.get('host')}`;
+    const lines = [
+      `Hi ${enq.name}! Regarding your enquiry for ${enq.event_type || 'your event'} on ${enq.event_date || 'the requested date'} — `,
+    ];
+    if (enq.tracking_code) {
+      lines.push(
+        '',
+        `Tracking code: ${enq.tracking_code}`,
+        `To track: ${buildTrackingUrl(origin, 'en', enq.tracking_code)}`,
+      );
+    }
+    waUrl = buildWhatsAppUrl(lines.join('\n'), customerWa);
+  }
 
   // Format timeline entries from enquiry_status_history
   const timelineEntries = (history ?? []).map((h) => ({
@@ -210,14 +227,17 @@ export default async function EnquiryDetailPage({
                 >
                   <Phone size={18} /> Call Customer
                 </a>
-                <a
-                  href={waUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1da851] transition-colors min-h-[44px]"
-                >
-                  <MessageCircle size={18} /> WhatsApp
-                </a>
+                {waUrl && (
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open the customer’s WhatsApp chat with their tracking link"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[#25D366] hover:bg-[#1da851] transition-colors min-h-[44px]"
+                  >
+                    <MessageCircle size={18} /> WhatsApp
+                  </a>
+                )}
                 <Link
                   href={`/admin/enquiries/${enq.id}/invoice`}
                   className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-body text-sm font-semibold text-white bg-[var(--color-gold-600)] hover:bg-[var(--color-gold-700)] transition-colors min-h-[44px]"

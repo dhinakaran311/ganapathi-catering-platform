@@ -12,15 +12,12 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+// Shared with the enquiry WhatsApp links; re-exported for existing imports.
+import { toWaNumber } from '@/lib/whatsapp';
+
+export { toWaNumber };
 
 export type WhatsAppSendState = 'idle' | 'preparing' | 'opened' | 'blocked' | 'error';
-
-/** wa.me number: 10-digit Indian numbers get the 91 prefix. */
-export function toWaNumber(phone: string | null | undefined): string | null {
-  const digits = (phone ?? '').replace(/\D/g, '');
-  if (digits.length < 10) return null;
-  return digits.length === 10 ? `91${digits}` : digits;
-}
 
 /** Call synchronously inside the click handler (before any await). */
 export function openWhatsAppTab(): Window | null {

@@ -1,15 +1,16 @@
 'use client';
 
 // components/home/Contact.tsx — Enquiry form + direct contact (#contact).
-// The submit flow is unchanged: build the WhatsApp message, save to
-// /api/enquiries in the background (honeypot + Turnstile), open WhatsApp,
+// Submit flow: open the WhatsApp tab (inside the tap), save to /api/enquiries
+// (honeypot + Turnstile) waiting up to SAVE_WAIT_MS for the tracking code,
+// send the WhatsApp message (with "To track: <link>" when the code arrived),
 // clear the autosaved draft and show the confirmation.
 
 
 import { useTranslations, useLocale } from 'next-intl';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { generateWhatsAppMessage, buildWhatsAppUrl } from '@/lib/whatsapp';
+import { generateWhatsAppMessage, buildWhatsAppUrl, buildTrackingUrl } from '@/lib/whatsapp';
 import { track } from '@/lib/analytics/track';
 import TurnstileWidget from '@/components/shared/TurnstileWidget';
 import { Phone } from 'lucide-react';
@@ -32,6 +33,8 @@ interface ContactFormData {
 const FORM_STORAGE_KEY = 'sgm_enquiry_form';
 // Last tracking code, kept on this device so the customer can find it again.
 const LAST_TRACKING_KEY = 'sgm_last_tracking_code';
+// How long to wait for the save so the tracking link can go into WhatsApp.
+const SAVE_WAIT_MS = 5000;
 
 // Option VALUES are sent to WhatsApp / the API exactly as before.
 const EVENT_OPTIONS = [
@@ -82,6 +85,8 @@ export default function Contact() {
   const [trackingCode, setTrackingCode] = useState<string | null>(null);
   const [codeState, setCodeState] = useState<'idle' | 'pending' | 'ready' | 'none'>('idle');
   const [copied, setCopied] = useState(false);
+  // Set only if the browser blocked the WhatsApp tab — shown as a button.
+  const [pendingWaUrl, setPendingWaUrl] = useState<string | null>(null);
   const autoCloseRef = useRef<number | null>(null);
 
   // B11: Auto-save form to localStorage while filling
@@ -106,57 +111,43 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     // Analytics (fire-and-forget — never blocks the flow)
     track({ event: 'enquiry_submit', metadata: { event_type: formData.event, food_type: formData.foodType } });
 
-    // 1️⃣ Build WhatsApp message (always happens, even if DB save fails)
-    const message = generateWhatsAppMessage({
-      name: formData.name,
-      phone: formData.phone,
-      event: formData.event,
-      guests: formData.guests,
-      eventDate: formData.eventDate,
-      eventLocation: formData.eventLocation,
-      foodType: formData.foodType,
-      customItems: formData.customItems,
-      message: formData.message,
-    });
-    const whatsappUrl = buildWhatsAppUrl(message);
+    // 1️⃣ Open the WhatsApp tab NOW, inside the tap — browsers block pop-ups
+    // opened after an await. It is pointed at the chat once the message is ready.
+    let tab: Window | null = null;
+    try { tab = window.open('', '_blank'); } catch { tab = null; }
 
-    // 2️⃣ Save to Supabase in the background. The WhatsApp flow never waits
-    // for it (customer experience is protected), but when the save returns a
-    // tracking code we show it in the confirmation dialog.
+    // 2️⃣ Save to Supabase, waiting at most SAVE_WAIT_MS so the tracking code
+    // and link can go into the WhatsApp message. A slow or failed save never
+    // blocks the customer — the message is then sent without them.
     setTrackingCode(null);
     setCodeState('pending');
-    fetch('/api/enquiries', {
+    setPendingWaUrl(null);
+    const data = { ...formData };
+    const save = fetch('/api/enquiries', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: formData.name,
-        phone: formData.phone,
-        event: formData.event,
-        guests: formData.guests,
-        eventDate: formData.eventDate,
-        eventLocation: formData.eventLocation,
-        foodType: formData.foodType,
-        customItems: formData.customItems,
-        message: formData.message,
+        ...data,
         website: honeypot,
         turnstileToken: turnstileToken || undefined,
       }),
     })
       .then(async (res) => {
-        if (res.ok) return res.json();
+        if (res.ok) return (await res.json()) as { tracking_code?: string };
         // Never shown to the customer, but visible in the browser console so
         // a broken save can't go unnoticed again.
         const detail = await res.text().catch(() => '');
         console.error(`[Contact] enquiry save failed: HTTP ${res.status}`, detail);
         return null;
       })
-      .then((data: { tracking_code?: string } | null) => {
-        const code = data?.tracking_code;
+      .then((json) => {
+        const code = json?.tracking_code ?? null;
         if (code) {
           setTrackingCode(code);
           setCodeState('ready');
@@ -166,27 +157,58 @@ export default function Contact() {
         } else {
           setCodeState('none');
         }
+        return code;
       })
       .catch((err) => {
         // Silently log — never surface errors to the customer
         setCodeState('none');
         console.error('[Contact] enquiry save failed:', err);
+        return null;
       });
+    const code = await Promise.race([
+      save,
+      new Promise<null>((resolve) => window.setTimeout(() => resolve(null), SAVE_WAIT_MS)),
+    ]);
 
-    // 3️⃣ Open WhatsApp immediately (don't wait for DB)
+    // 3️⃣ Build the WhatsApp message (with the tracking code + link when saved)
+    const message = generateWhatsAppMessage({
+      name: data.name,
+      phone: data.phone,
+      event: data.event,
+      guests: data.guests,
+      eventDate: data.eventDate,
+      eventLocation: data.eventLocation,
+      foodType: data.foodType,
+      customItems: data.customItems,
+      message: data.message,
+      ...(code ? { trackingCode: code, trackingUrl: buildTrackingUrl(window.location.origin, locale, code) } : {}),
+    });
+    const whatsappUrl = buildWhatsAppUrl(message);
+
+    // 4️⃣ Open the chat (in the tab opened above; if the browser blocked that,
+    // try once more, else offer a tap-to-open button in the confirmation).
     track({ event: 'whatsapp_open', metadata: { source: 'contact_form' } });
-    window.open(whatsappUrl, '_blank');
+    let blocked = false;
+    if (tab && !tab.closed) {
+      tab.location.href = whatsappUrl;
+    } else if (!window.open(whatsappUrl, '_blank')) {
+      blocked = true;
+      setPendingWaUrl(whatsappUrl);
+    }
 
-    // 4️⃣ Clear form + show success popup
+    // 5️⃣ Clear form + show success popup
     localStorage.removeItem(FORM_STORAGE_KEY);
     setFormData(defaultForm);
     setTurnstileToken('');
     setTurnstileKey((k) => k + 1); // tokens are single-use
     setIsSubmitting(false);
     setShowSuccess(true);
-    // Auto-close popup after 6 seconds (cancelled if a tracking code arrives)
+    // Auto-close popup after 6 seconds — unless there is a tracking code or a
+    // WhatsApp button to show (a late code also cancels it, see above).
     if (autoCloseRef.current) window.clearTimeout(autoCloseRef.current);
-    autoCloseRef.current = window.setTimeout(() => setShowSuccess(false), 6000);
+    if (!code && !blocked) {
+      autoCloseRef.current = window.setTimeout(() => setShowSuccess(false), 6000);
+    }
   };
 
   const copyCode = async () => {
@@ -334,6 +356,12 @@ export default function Contact() {
                   {isSubmitting ? s('sending') : t('form.submit')}
                 </button>
                 <p className="mt-3 text-center text-[0.88rem] text-[var(--site-ink-muted)]">{t('form.note')}</p>
+                <p className="mt-4 text-center text-[0.95rem] text-[var(--site-ink-soft)]">
+                  {s('trackExisting')}{' '}
+                  <a href={`/${locale}/track`} className="font-semibold text-[var(--site-leaf-deep)] underline underline-offset-4">
+                    {s('trackExistingLink')}
+                  </a>
+                </p>
               </div>
             </form>
           </Reveal>
@@ -383,6 +411,20 @@ export default function Contact() {
           >
             <h3 id="enquiry-sent-title" className="s-h3 text-[var(--site-leaf-deep)]">{s('successTitle')}</h3>
             <p className="mt-3 text-[1rem] leading-relaxed text-[var(--site-ink-soft)]">{s('successBody')}</p>
+
+            {/* Only when the browser blocked the WhatsApp tab */}
+            {pendingWaUrl && (
+              <a
+                href={pendingWaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setPendingWaUrl(null)}
+                className="s-btn s-btn-primary s-wa mt-5 w-full"
+              >
+                <WhatsAppIcon size={19} />
+                {s('openWhatsApp')}
+              </a>
+            )}
 
             {/* Tracking code (B13) — appears as soon as the save returns */}
             <div aria-live="polite">

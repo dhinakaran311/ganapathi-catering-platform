@@ -1,15 +1,15 @@
 'use client';
 
 // components/layout/Header.tsx — Public site header.
-// Desktop: brand · section links · language · WhatsApp.
-// Mobile: brand · language · menu button → full-screen sheet with large links
+// Desktop (≥1280px): brand · section links · track · language · WhatsApp.
+// Below 1280px (Tamil links don't fit narrower): brand · track · language · menu button → full-screen sheet with large links
 // and call / WhatsApp actions. Escape closes; body scroll is locked while open.
 
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { Menu as MenuIcon, X, Phone } from 'lucide-react';
+import { Menu as MenuIcon, X, Phone, PackageSearch } from 'lucide-react';
 import LanguageSwitcher from './LanguageSwitcher';
 import { WhatsAppIcon } from '@/components/site/icons';
 import { SITE } from '@/lib/site';
@@ -32,6 +32,7 @@ export default function Header() {
     { href: `${home}/gallery`, label: t('gallery') },
     { href: `${home}#contact`, label: t('contact') },
   ];
+  const trackHref = `${home}/track`;
 
   useEffect(() => {
     if (!open) return;
@@ -55,19 +56,19 @@ export default function Header() {
     // The sheet lives inside this sticky header (its own stacking context), so
     // while it's open the whole header is lifted above the mobile action bar.
     <header className={`sticky top-0 bg-[var(--site-paper)] ${open ? 'z-[1000]' : 'z-50'}`}>
-      <div className="s-container flex h-[var(--site-header)] items-center justify-between gap-6">
-        <Link href={home} aria-label={t('home')} className="flex flex-none items-center gap-3">
+      <div className="s-container flex h-[var(--site-header)] items-center justify-between gap-2 sm:gap-6">
+        <Link href={home} aria-label={t('home')} className="flex flex-none items-center gap-2 sm:gap-3">
           <Image
             src={logoUrl ?? '/logos/logo-192.png'}
             alt=""
             width={44}
             height={44}
-            className="h-11 w-11 object-contain"
+            className="h-9 w-9 flex-none object-contain sm:h-11 sm:w-11"
             priority
             unoptimized={Boolean(logoUrl?.startsWith('http'))}
           />
           <span className="flex flex-col leading-tight">
-            <span className="s-serif text-[1.05rem] font-semibold text-[var(--site-leaf-deep)]" lang="ta">
+            <span className="s-serif whitespace-nowrap text-[0.86rem] min-[400px]:text-[0.95rem] sm:text-[1.05rem] font-semibold text-[var(--site-leaf-deep)]" lang="ta">
               ஸ்ரீ கணபதி மெஸ்
             </span>
             <span className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--site-brass-text)]">
@@ -76,7 +77,7 @@ export default function Header() {
           </span>
         </Link>
 
-        <nav aria-label={t('primary')} className="hidden lg:block">
+        <nav aria-label={t('primary')} className="hidden xl:block">
           <ul className="flex items-center gap-7">
             {links.map((l) => (
               <li key={l.href}>
@@ -91,7 +92,18 @@ export default function Header() {
           </ul>
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex flex-none items-center gap-1 sm:gap-3">
+          {/* Track enquiry: full label below 1280px (section links are in the menu) and very wide
+              screens; a round icon button at 1280–1535px, where the section links
+              already fill the row. The label stays for screen readers. */}
+          <Link
+            href={trackHref}
+            title={t('track')}
+            className="s-btn s-btn-outline hidden min-h-[44px] whitespace-nowrap px-4 text-[0.95rem] md:inline-flex xl:w-11 xl:px-0 2xl:w-auto 2xl:px-4"
+          >
+            <PackageSearch size={18} aria-hidden="true" />
+            <span className="xl:sr-only 2xl:not-sr-only">{t('track')}</span>
+          </Link>
           <LanguageSwitcher />
           <a
             href={SITE.whatsappUrl}
@@ -109,7 +121,7 @@ export default function Header() {
             aria-expanded={open}
             aria-controls="site-menu"
             aria-label={t('openMenu')}
-            className="grid h-11 w-11 place-items-center rounded-full text-[var(--site-leaf-deep)] transition-colors hover:bg-[var(--site-paper-deep)] lg:hidden"
+            className="grid h-11 w-11 place-items-center rounded-full text-[var(--site-leaf-deep)] transition-colors hover:bg-[var(--site-paper-deep)] xl:hidden"
           >
             <MenuIcon size={24} />
           </button>
@@ -124,7 +136,7 @@ export default function Header() {
           role="dialog"
           aria-modal="true"
           aria-label={t('primary')}
-          className="fixed inset-0 z-[60] flex flex-col bg-[var(--site-leaf-deep)] text-[var(--site-on-dark)] lg:hidden"
+          className="fixed inset-0 z-[60] flex flex-col bg-[var(--site-leaf-deep)] text-[var(--site-on-dark)] xl:hidden"
         >
           <div className="s-container flex h-[var(--site-header)] items-center justify-between">
             <span className="s-serif text-lg font-semibold" lang="ta">ஸ்ரீ கணபதி மெஸ்</span>
@@ -151,6 +163,16 @@ export default function Header() {
                   </a>
                 </li>
               ))}
+              <li>
+                <Link
+                  href={trackHref}
+                  onClick={() => setOpen(false)}
+                  className="s-serif flex items-center gap-3 py-2.5 text-[2rem] font-semibold leading-tight transition-colors hover:text-[var(--site-brass-light)]"
+                >
+                  <PackageSearch size={28} aria-hidden="true" />
+                  {t('track')}
+                </Link>
+              </li>
             </ul>
           </nav>
 

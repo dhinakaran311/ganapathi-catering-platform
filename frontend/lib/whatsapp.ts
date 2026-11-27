@@ -14,9 +14,24 @@ export interface WhatsAppFormData {
   foodType?: string;
   customItems?: string;
   message?: string;
+  /** Added once the enquiry is saved — lets either side open its status page. */
+  trackingCode?: string;
+  trackingUrl?: string;
 }
 
 export const WHATSAPP_NUMBER = '919942351280';
+
+/** wa.me number: 10-digit Indian numbers get the 91 prefix; null if unusable. */
+export function toWaNumber(phone: string | null | undefined): string | null {
+  const digits = (phone ?? '').replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  return digits.length === 10 ? `91${digits}` : digits;
+}
+
+/** Public status page for an enquiry, e.g. https://site/en/track/B93E3D7A */
+export function buildTrackingUrl(origin: string, locale: string, code: string): string {
+  return `${origin.replace(/\/$/, '')}/${locale}/track/${encodeURIComponent(code)}`;
+}
 
 /**
  * Generate a pre-filled WhatsApp message from enquiry form data
@@ -47,14 +62,21 @@ export function generateWhatsAppMessage(data: WhatsAppFormData): string {
     lines.push(data.message);
   }
 
+  if (data.trackingCode) {
+    lines.push('---------------------------------');
+    lines.push(`Tracking code: ${data.trackingCode}`);
+    if (data.trackingUrl) lines.push(`To track: ${data.trackingUrl}`);
+  }
+
   return lines.join('\n');
 }
 
 /**
- * Build a wa.me URL with the given pre-filled text
+ * Build a wa.me URL with the given pre-filled text, to the business number
+ * by default or to another wa.me number (e.g. the customer's — see toWaNumber).
  */
-export function buildWhatsAppUrl(message: string): string {
-  return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+export function buildWhatsAppUrl(message: string, toNumber: string = WHATSAPP_NUMBER): string {
+  return `https://wa.me/${toNumber}?text=${encodeURIComponent(message)}`;
 }
 
 /**
