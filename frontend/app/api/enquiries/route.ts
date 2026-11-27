@@ -23,6 +23,7 @@ import { getClientIp, hashIdentifier, isHoneypotTripped } from '@/lib/security/r
 import { checkRateLimits } from '@/lib/security/rate-limit';
 import { verifyTurnstile } from '@/lib/security/turnstile';
 import { normalizeIndianPhone, legacyPhoneForms } from '@/lib/phone';
+import type { EnquirySource } from '@/types/staff';
 
 export async function POST(req: NextRequest) {
   try {
@@ -139,7 +140,10 @@ export async function POST(req: NextRequest) {
         ? input.customItems.split(',').map((s: string) => s.trim()).filter(Boolean)
         : null,
       status: 'NEW',
-      source: 'form',
+      // Must be one of the values allowed by enquiries_source_check
+      // (migration 020). The old lowercase 'form' was rejected by that
+      // constraint, so website enquiries never reached the admin panel.
+      source: 'WEBSITE' satisfies EnquirySource,
     };
 
     const { data, error } = await supabase
@@ -149,7 +153,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) {
-      console.error('[enquiries API] Supabase insert error:', error.message);
+      console.error('[enquiries API] Supabase insert error:', error.code, error.message, error.details ?? '');
       return NextResponse.json({ error: 'Could not save enquiry' }, { status: 500 });
     }
 

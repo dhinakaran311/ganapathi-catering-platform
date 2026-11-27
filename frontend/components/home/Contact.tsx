@@ -147,7 +147,14 @@ export default function Contact() {
         turnstileToken: turnstileToken || undefined,
       }),
     })
-      .then((res) => (res.ok ? res.json() : null))
+      .then(async (res) => {
+        if (res.ok) return res.json();
+        // Never shown to the customer, but visible in the browser console so
+        // a broken save can't go unnoticed again.
+        const detail = await res.text().catch(() => '');
+        console.error(`[Contact] enquiry save failed: HTTP ${res.status}`, detail);
+        return null;
+      })
       .then((data: { tracking_code?: string } | null) => {
         const code = data?.tracking_code;
         if (code) {
